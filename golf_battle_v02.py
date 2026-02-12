@@ -277,7 +277,7 @@ def main():
                     c_name, c_input = st.columns([0.2, 0.2])
                     
                     with c_name:
-                        st.markdown(f"<div style='margin-top: 12px; font-weight: bold; text-align: left; font-size: 18px;'>{p.name}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='margin-top: 12px; font-weight: bold; text-align: right; font-size: 18px;'>{p.name}</div>", unsafe_allow_html=True)
                     
                     with c_input:
                         score_val = st.number_input(
