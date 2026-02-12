@@ -183,7 +183,7 @@ st.markdown("""
             padding-bottom: 3rem !important; 
             padding-left: 1rem !important; 
             padding-right: 1rem !important;
-            max-width: 400px !important; /* 창 너비를 추가로 약 20% 더 축소 */
+            max-width: 300px !important; /* 창 너비를 추가로 약 20% 더 축소 */
             margin: auto;
         }
         
