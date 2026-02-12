@@ -121,14 +121,14 @@ class GolfGame:
         return html
 
 # ==========================================
-# [Streamlit View] UI 구성 (압축 및 소형화 모드)
+# [Streamlit View] UI 구성 (압축 및 현황 화면 축소 모드)
 # ==========================================
 st.set_page_config(page_title="골프 정산", layout="centered", initial_sidebar_state="collapsed")
 
 st.markdown("""
     <style>
-        /* 1. 전체 글자 크기 10% 축소 (18px -> 16.2px) */
-        html, body, [class*="css"] { font-size: 16.2px !important; }
+        /* 메인 입력 화면 폰트: 약 16px */
+        html, body, [class*="css"] { font-size: 16px !important; }
         
         .block-container { 
             padding-top: 1rem !important; 
@@ -138,14 +138,12 @@ st.markdown("""
             max-width: 480px !important; margin: auto;
         }
         
-        /* 2. 줄 간격 및 요소 간격 15% 이상 압축 */
-        div[data-testid="stVerticalBlock"] { gap: 0.35rem !important; }
-        div[data-testid="stHorizontalBlock"] { gap: 0.18rem !important; }
+        div[data-testid="stVerticalBlock"] { gap: 0.3rem !important; }
+        div[data-testid="stHorizontalBlock"] { gap: 0.15rem !important; }
         
-        h1 { font-size: 1.6rem !important; margin-bottom: 0.4rem !important; }
-        p, div, label, caption { line-height: 1.05 !important; margin-bottom: 0px !important; }
+        h1 { font-size: 1.6rem !important; margin-bottom: 0.3rem !important; }
+        p, div, label, caption { line-height: 1.05 !important; }
 
-        /* 입력 위젯 크기 조절 */
         .stNumberInput input { height: 2.1rem !important; font-size: 16px !important; }
         button[kind="secondary"] { height: 2.1rem !important; width: 2.1rem !important; }
         
@@ -154,14 +152,25 @@ st.markdown("""
         }
         
         .stButton button { 
-            height: 2.6rem !important; font-size: 16.2px !important; font-weight: bold !important;
+            height: 2.6rem !important; font-size: 16px !important; font-weight: bold !important;
             border-radius: 6px; margin-top: 2px !important;
         }
 
-        /* 테이블 및 기타 요소 압축 */
-        [data-testid="stTable"] td, [data-testid="stDataFrame"] td { padding: 1.5px !important; line-height: 1.0 !important; }
-        div[data-testid="stNotification"] { padding: 0.25rem 0.5rem !important; min-height: auto !important; }
-        div[data-testid="stExpander"] { margin-bottom: 0px !important; }
+        /* [핵심] 현황 화면(tab2) 글자 20% 더 축소 스타일 (약 13px) */
+        [data-testid="stExpander"] div, [data-testid="stNotification"] div, [data-testid="stMarkdownContainer"] p {
+            font-size: 16px; /* 기본값 */
+        }
+        
+        /* 탭 내부의 특정 요소만 조준하여 축소 */
+        .stTabs [data-baseweb="tabpanel"]:nth-child(2) p, 
+        .stTabs [data-baseweb="tabpanel"]:nth-child(2) div,
+        .stTabs [data-baseweb="tabpanel"]:nth-child(2) span {
+            font-size: 13px !important; /* 16px에서 20% 축소 */
+        }
+
+        /* 테이블 및 알림창 초압축 */
+        [data-testid="stTable"] td, [data-testid="stDataFrame"] td { padding: 1px !important; line-height: 1.0 !important; font-size: 12px !important; }
+        div[data-testid="stNotification"] { padding: 0.2rem 0.4rem !important; min-height: auto !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -228,12 +237,14 @@ def main():
                     st.rerun()
 
         with tab2:
+            # [현황 화면] 글자 크기 축소 적용
             guide = game.get_settlement_guide()
             if not guide or guide[0] == "정산할 내용이 없습니다.":
                 st.info("정산할 금액이 없습니다.")
             else:
                 for line in guide: st.success(line)
             st.divider()
+            # 데이터프레임 글자 크기도 CSS로 조절됨
             score_summary_df = pd.DataFrame({p.name: [sum(p.scores)] for p in game.players}).T.rename(columns={0: "Total"})
             st.dataframe(score_summary_df, use_container_width=True)
 
