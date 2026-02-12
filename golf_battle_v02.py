@@ -275,7 +275,7 @@ def main():
                 input_scores = {}
                 
                 for p in game.players:
-                    c_name, c_input = st.columns([0.4, 0.6])
+                    c_name, c_input = st.columns([0.3, 0.3])
                     
                     with c_name:
                         st.markdown(f"<div style='margin-top: 12px; font-weight: bold; text-align: left; font-size: 18px;'>{p.name}</div>", unsafe_allow_html=True)
