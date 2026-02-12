@@ -167,11 +167,12 @@ class GolfGame:
         return html
 
 # ==========================================
-# [Streamlit View] UI 구성 (세로 1열 나열)
+# [Streamlit View] UI 구성
 # ==========================================
 
 st.set_page_config(page_title="골프 정산", layout="centered", initial_sidebar_state="collapsed")
 
+# [수정] max-width를 80% 수준(약 600px)으로 줄여 너비 조정
 st.markdown("""
     <style>
         html, body, [class*="css"] {
@@ -180,8 +181,10 @@ st.markdown("""
         .block-container { 
             padding-top: 2rem !important; 
             padding-bottom: 3rem !important; 
-            padding-left: 0.5rem !important; 
-            padding-right: 0.5rem !important; 
+            padding-left: 1rem !important; 
+            padding-right: 1rem !important;
+            max-width: 600px !important; /* 전체 창 너비를 약 20% 축소 효과 */
+            margin: auto;
         }
         
         h1 { font-size: 2.0rem !important; }
@@ -258,7 +261,7 @@ def main():
 
     elif st.session_state.step == 'playing':
         game = st.session_state.game
-        st.info(f"🚩 **Hole {game.current_hole}** / {game.total_holes} (Par {game.current_par})")
+        st.info(f"🚩 **Hole {game.current_hole}** / {game.total_holes}")
         
         tab1, tab2 = st.tabs(["📝 입력", "📊 현황"])
         
@@ -271,18 +274,16 @@ def main():
                 st.caption("스코어 (+/- 버튼)")
                 input_scores = {}
                 
-                # [수정] 2열 배치를 제거하고 세로 1열로 나열
                 for p in game.players:
-                    # 이름과 입력창 비율 조정 (이름 40%, 버튼 60%)
-                    c_name, c_input = st.columns([0.2, 0.2])
+                    c_name, c_input = st.columns([0.4, 0.6])
                     
                     with c_name:
-                        st.markdown(f"<div style='margin-top: 12px; font-weight: bold; text-align: right; font-size: 18px;'>{p.name}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='margin-top: 12px; font-weight: bold; text-align: left; font-size: 18px;'>{p.name}</div>", unsafe_allow_html=True)
                     
                     with c_input:
                         score_val = st.number_input(
                             f"{p.name}_num",
-                            min_value=-3, max_value=6, value=1, step=1,
+                            min_value=-10, max_value=10, value=0, step=1,
                             format="%d", key=f"s_{p.name}",
                             label_visibility="collapsed"
                         )
