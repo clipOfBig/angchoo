@@ -135,30 +135,21 @@ st.markdown("""
             padding-right: 0.5rem !important;
             max-width: 480px !important; margin: auto;
         }
-        
-        /* [핵심] 행간 및 요소 간격 50% 축소 */
         div[data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
         div[data-testid="stHorizontalBlock"] { gap: 0.2rem !important; }
-        
         h1 { font-size: 1.8rem !important; margin-bottom: 0.5rem !important; }
         p, div, label, caption { line-height: 1.1 !important; margin-bottom: 0px !important; }
-
         .stNumberInput input { height: 2.2rem !important; font-size: 18px !important; }
         button[kind="secondary"] { height: 2.2rem !important; width: 2.2rem !important; }
-        
         .stTextInput input, .stSelectbox div[data-baseweb="select"] div {
             height: 2.2rem !important; min-height: 2.2rem !important; font-size: 18px !important;
         }
-        
         .stButton button { 
             height: 2.8rem !important; font-size: 18px !important; font-weight: bold !important;
             border-radius: 8px; margin-top: 5px !important;
         }
-
-        /* 테이블 및 알림창 압축 */
         [data-testid="stTable"] td, [data-testid="stDataFrame"] td { padding: 2px !important; line-height: 1.0 !important; }
         div[data-testid="stNotification"] { padding: 0.3rem 0.6rem !important; min-height: auto !important; }
-        div[data-testid="stExpander"] { margin-bottom: 0px !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -225,16 +216,29 @@ def main():
                     st.rerun()
 
         with tab2:
+            # [에러 수정 포인트] 한 줄 if-else 문을 표준 여러 줄 문법으로 변경
             guide = game.get_settlement_guide()
-            for line in guide: st.success(line) if guide[0] != "정산할 내용이 없습니다." else st.info(line)
-            st.dataframe(pd.DataFrame({p.name: [sum(p.scores)] for p in game.players}).T.rename(columns={0: "Total"}), use_container_width=True)
+            if not guide or guide[0] == "정산할 내용이 없습니다.":
+                st.info("정산할 금액이 없습니다.")
+            else:
+                for line in guide:
+                    st.success(line)
+            
+            st.divider()
+            # 간단 테이블
+            score_summary_df = pd.DataFrame({p.name: [sum(p.scores)] for p in game.players}).T.rename(columns={0: "Total"})
+            st.dataframe(score_summary_df, use_container_width=True)
 
     elif st.session_state.step == 'final':
         st.title("🏆 결과")
         st.components.v1.html(game.generate_html_report(), height=400, scrolling=True)
-        for line in game.get_settlement_guide(): st.success(line)
+        # 최종 결과 송금 가이드 출력 부분도 수정
+        final_guide = game.get_settlement_guide()
+        for line in final_guide:
+            st.success(line)
         if st.button("새 게임", type="primary"):
             st.session_state.clear()
             st.rerun()
 
-if __name__ == '__main__': main()
+if __name__ == '__main__': 
+    main()
