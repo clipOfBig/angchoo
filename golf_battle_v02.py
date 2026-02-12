@@ -282,7 +282,7 @@ def main():
                     with c_input:
                         score_val = st.number_input(
                             f"{p.name}_num",
-                            min_value=-10, max_value=10, value=0, step=1,
+                            min_value=-3, max_value=6, value=1, step=1,
                             format="%d", key=f"s_{p.name}",
                             label_visibility="collapsed"
                         )
