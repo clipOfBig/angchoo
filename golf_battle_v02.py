@@ -167,15 +167,13 @@ class GolfGame:
         return html
 
 # ==========================================
-# [Streamlit View] UI 구성 (18px 모드)
+# [Streamlit View] UI 구성 (세로 1열 나열)
 # ==========================================
 
 st.set_page_config(page_title="골프 정산", layout="centered", initial_sidebar_state="collapsed")
 
-# [CSS] 글자 크기 18px 조정 및 버튼 너비 최적화
 st.markdown("""
     <style>
-        /* 1. 기본 폰트 크기 18px */
         html, body, [class*="css"] {
             font-size: 18px !important;
         }
@@ -186,32 +184,27 @@ st.markdown("""
             padding-right: 0.5rem !important; 
         }
         
-        /* 2. 제목 크기 */
         h1 { font-size: 2.0rem !important; }
         h3 { font-size: 1.5rem !important; }
         p, div, label { font-size: 18px !important; }
 
-        /* 3. 숫자 입력창(토글) 너비 및 스타일 */
         .stNumberInput input {
             text-align: center !important; 
             font-weight: bold !important;
             font-size: 20px !important;
             height: 2.8rem !important;
         }
-        /* 버튼 크기 조정 */
         button[kind="secondary"] {
             height: 2.8rem !important;
             width: 2.8rem !important;
         }
         
-        /* 4. 입력창 및 드롭다운 크기 */
         .stTextInput input, .stSelectbox div[data-baseweb="select"] div {
             height: 2.8rem !important; 
             min-height: 2.8rem !important;
             font-size: 18px !important;
         }
         
-        /* 5. 메인 버튼 스타일 */
         .stButton button { 
             width: 100%; 
             border-radius: 10px; 
@@ -277,24 +270,23 @@ def main():
             with st.form("score_form"):
                 st.caption("스코어 (+/- 버튼)")
                 input_scores = {}
-                grid_cols = st.columns(2)
                 
-                for idx, p in enumerate(game.players):
-                    with grid_cols[idx % 2]:
-                        # [수정] 이름 칸은 넓게(0.6), 스코어 토글 버튼은 좁게(0.4) 배치
-                        c_name, c_input = st.columns([0.3, 0.3])
-                        
-                        with c_name:
-                            st.markdown(f"<div style='margin-top: 12px; font-weight: bold; text-align: left; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>{p.name}</div>", unsafe_allow_html=True)
-                        
-                        with c_input:
-                            score_val = st.number_input(
-                                f"{p.name}_num",
-                                min_value=-10, max_value=10, value=0, step=1,
-                                format="%d", key=f"s_{p.name}",
-                                label_visibility="collapsed"
-                            )
-                            input_scores[p] = game.current_par + score_val
+                # [수정] 2열 배치를 제거하고 세로 1열로 나열
+                for p in game.players:
+                    # 이름과 입력창 비율 조정 (이름 40%, 버튼 60%)
+                    c_name, c_input = st.columns([0.4, 0.6])
+                    
+                    with c_name:
+                        st.markdown(f"<div style='margin-top: 12px; font-weight: bold; text-align: left; font-size: 18px;'>{p.name}</div>", unsafe_allow_html=True)
+                    
+                    with c_input:
+                        score_val = st.number_input(
+                            f"{p.name}_num",
+                            min_value=-10, max_value=10, value=0, step=1,
+                            format="%d", key=f"s_{p.name}",
+                            label_visibility="collapsed"
+                        )
+                        input_scores[p] = game.current_par + score_val
                 
                 if st.form_submit_button("💰 계산 (미리보기)", type="primary"):
                     ledger, transactions, logs = game.calculate_hole(input_scores)
