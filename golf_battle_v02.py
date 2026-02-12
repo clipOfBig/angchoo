@@ -123,11 +123,10 @@ class GolfGame:
         return self.simplify_transactions(temp_ledger)
     
     def generate_html_report(self):
-        # [수정] 리포트 글자 크기도 키움
         html = """
         <style>
-            table { width: 100%; border-collapse: collapse; font-size: 16px; text-align: center; white-space: nowrap; }
-            th, td { border: 1px solid #ddd; padding: 6px 8px; }
+            table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; white-space: nowrap; }
+            th, td { border: 1px solid #ddd; padding: 4px 6px; }
             th { background-color: #f8f9fa; position: sticky; left: 0; }
             .pos { color: blue; font-weight: bold; }
             .neg { color: red; font-weight: bold; }
@@ -168,71 +167,57 @@ class GolfGame:
         return html
 
 # ==========================================
-# [Streamlit View] UI 구성 (확대 모드)
+# [Streamlit View] UI 구성 (18px 모드)
 # ==========================================
 
 st.set_page_config(page_title="골프 정산", layout="centered", initial_sidebar_state="collapsed")
 
-# [CSS] 글자 크기 24px로 대폭 확대 및 UI 요소 높이 증가
+# [CSS] 글자 크기 18px 조정 및 버튼 너비 최적화
 st.markdown("""
     <style>
-        /* 1. 기본 폰트 크기 확대 (24px) */
+        /* 1. 기본 폰트 크기 18px */
         html, body, [class*="css"] {
-            font-size: 24px !important;
+            font-size: 18px !important;
         }
         .block-container { 
-            padding-top: 3rem !important; 
+            padding-top: 2rem !important; 
             padding-bottom: 3rem !important; 
             padding-left: 0.5rem !important; 
             padding-right: 0.5rem !important; 
         }
         
         /* 2. 제목 크기 */
-        h1 { font-size: 2.5rem !important; padding-bottom: 0.5rem !important; }
-        h3 { font-size: 1.8rem !important; padding-top: 0.5rem !important; }
-        p, div, label { font-size: 24px !important; }
+        h1 { font-size: 2.0rem !important; }
+        h3 { font-size: 1.5rem !important; }
+        p, div, label { font-size: 18px !important; }
 
-        /* 3. 숫자 입력창(Number Input) - 크게 */
+        /* 3. 숫자 입력창(토글) 너비 및 스타일 */
         .stNumberInput input {
             text-align: center !important; 
             font-weight: bold !important;
-            font-size: 26px !important;
-            height: 3.5rem !important; /* 높이 키움 */
+            font-size: 20px !important;
+            height: 2.8rem !important;
         }
-        /* +/- 버튼 크기 확대 */
+        /* 버튼 크기 조정 */
         button[kind="secondary"] {
-            height: 3.5rem !important;
-            width: 3.5rem !important;
+            height: 2.8rem !important;
+            width: 2.8rem !important;
         }
         
-        /* +/- 아이콘 크기 확대 */
-        button[kind="secondary"] svg {
-            width: 24px !important;
-            height: 24px !important;
-        }
-
-        /* 4. 텍스트 입력창 및 드롭다운 높이 */
+        /* 4. 입력창 및 드롭다운 크기 */
         .stTextInput input, .stSelectbox div[data-baseweb="select"] div {
-            height: 3.5rem !important; 
-            min-height: 3.5rem !important;
-            font-size: 24px !important;
+            height: 2.8rem !important; 
+            min-height: 2.8rem !important;
+            font-size: 18px !important;
         }
         
-        /* 5. 메인 버튼 확대 */
+        /* 5. 메인 버튼 스타일 */
         .stButton button { 
             width: 100%; 
-            border-radius: 12px; 
-            height: 4.0rem !important; 
-            min-height: 4.0rem !important;
-            font-size: 26px !important;
+            border-radius: 10px; 
+            height: 3.5rem !important; 
+            font-size: 20px !important;
             font-weight: bold !important;
-            margin-top: 15px !important;
-        }
-        
-        /* 탭 버튼 확대 */
-        .stTabs [data-baseweb="tab"] {
-            height: 4.0rem !important;
-            font-size: 22px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -249,21 +234,13 @@ if 'temp_scores' not in st.session_state:
 def main():
     if st.session_state.step == 'setup':
         st.title("⛳️ 골프 정산")
-        
         num_players = st.selectbox("참가 인원", list(range(2, 13)), index=2)
         
         with st.form("setup_form"):
             st.write(f"플레이어 {num_players}명 이름:")
             input_names = []
-            
-            # 모바일 2열 배치
             cols = st.columns(2) 
-            
-            default_names = [
-                "홍길동", "김프로", "박싱글", "최버디", 
-                "이장타", "정퍼터", "강아이언", "윤우드",
-                "송어프로", "임샌드", "한이글", "오홀인원"
-            ]
+            default_names = ["홍길동", "김프로", "박싱글", "최버디", "이장타", "정퍼터", "강아이언", "윤우드", "송어프로", "임샌드", "한이글", "오홀인원"]
             
             for i in range(num_players):
                 val = default_names[i] if i < len(default_names) else f"선수{i+1}"
@@ -288,7 +265,6 @@ def main():
 
     elif st.session_state.step == 'playing':
         game = st.session_state.game
-        
         st.info(f"🚩 **Hole {game.current_hole}** / {game.total_holes} (Par {game.current_par})")
         
         tab1, tab2 = st.tabs(["📝 입력", "📊 현황"])
@@ -299,37 +275,27 @@ def main():
                 game.current_par = st.selectbox("Par", [3, 4, 5, 6], index=1)
             
             with st.form("score_form"):
-                st.caption("스코어 ( +/- 버튼 )")
+                st.caption("스코어 (+/- 버튼)")
                 input_scores = {}
-                
-                # 2열 그리드
                 grid_cols = st.columns(2)
                 
                 for idx, p in enumerate(game.players):
                     with grid_cols[idx % 2]:
-                        # [핵심 수정] 이름(30%) - 숫자입력(70%)
-                        # 이름 칸 너비를 줄여서 4글자 정도만 보이게 하고, 버튼 영역을 넓힘
-                        c_name, c_input = st.columns([0.3, 0.7])
+                        # [수정] 이름 칸은 넓게(0.6), 스코어 토글 버튼은 좁게(0.4) 배치
+                        c_name, c_input = st.columns([0.6, 0.4])
                         
                         with c_name:
-                            # 이름 수직 중앙 정렬 (큰 폰트)
-                            st.markdown(f"<div style='margin-top: 18px; font-weight: bold; text-align: right; font-size: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>{p.name}</div>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='margin-top: 12px; font-weight: bold; text-align: left; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>{p.name}</div>", unsafe_allow_html=True)
                         
                         with c_input:
-                            # 숫자 조절 버튼 (크게)
                             score_val = st.number_input(
                                 f"{p.name}_num",
-                                min_value=-10, 
-                                max_value=10, 
-                                value=0, 
-                                step=1,
-                                format="%d",
-                                key=f"s_{p.name}",
+                                min_value=-10, max_value=10, value=0, step=1,
+                                format="%d", key=f"s_{p.name}",
                                 label_visibility="collapsed"
                             )
                             input_scores[p] = game.current_par + score_val
                 
-                st.write("")
                 if st.form_submit_button("💰 계산 (미리보기)", type="primary"):
                     ledger, transactions, logs = game.calculate_hole(input_scores)
                     st.session_state.temp_ledger = ledger
@@ -339,35 +305,29 @@ def main():
             
             if st.session_state.get('temp_ledger'):
                 st.divider()
-                
                 for log in st.session_state.logs:
                     if "배판" in log: st.error(log)
                     else: st.caption(log)
                 
                 if st.session_state.transactions:
                     with st.expander("💸 송금 (합산)", expanded=True):
-                        for trans in st.session_state.transactions:
-                            st.write(trans)
-                else:
-                    st.info("거래 없음")
-
+                        for trans in st.session_state.transactions: st.write(trans)
+                
                 st.caption("이번 홀 손익")
                 cols_res = st.columns(len(game.players))
                 for idx, (p, amt) in enumerate(st.session_state.temp_ledger.items()):
                     with cols_res[idx]:
                         color = "blue" if amt > 0 else "red" if amt < 0 else "black"
                         val_str = f"{amt//1000}k" if abs(amt) >= 1000 else f"{amt}"
-                        st.markdown(f"<div style='text-align:center; font-size:18px;'>{p.name}<br><span style='color:{color}; font-weight:bold;'>{val_str}</span></div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='text-align:center; font-size:16px;'>{p.name}<br><span style='color:{color}; font-weight:bold;'>{val_str}</span></div>", unsafe_allow_html=True)
 
-                st.write("")
                 col_conf1, col_conf2 = st.columns(2)
                 with col_conf1:
                     if st.button("✅ 확정"):
                         game.commit_round(st.session_state.temp_ledger, st.session_state.temp_scores)
                         st.session_state.temp_ledger = None
                         st.session_state.temp_scores = None
-                        if game.current_hole > game.total_holes:
-                            st.session_state.step = 'final'
+                        if game.current_hole > game.total_holes: st.session_state.step = 'final'
                         st.rerun()
                 with col_conf2:
                     if st.button("🔄 재입력"):
@@ -378,11 +338,8 @@ def main():
             st.subheader("누적 정산")
             guide = game.get_settlement_guide()
             if guide and guide[0] != "정산할 내용이 없습니다 (0원).":
-                for line in guide:
-                    st.success(line)
-            else:
-                st.info("정산할 금액이 없습니다.")
-            
+                for line in guide: st.success(line)
+            else: st.info("정산할 금액이 없습니다.")
             st.divider()
             score_summary = {p.name: sum(p.scores) for p in game.players}
             st.dataframe(pd.DataFrame(list(score_summary.items()), columns=["이름", "Total"]), hide_index=True, use_container_width=True)
@@ -391,15 +348,12 @@ def main():
         game = st.session_state.game
         st.balloons()
         st.title("🏆 최종 결과")
-        
         html_report = game.generate_html_report()
         st.components.v1.html(html_report, height=500, scrolling=True)
-        
         st.divider()
         st.subheader("💸 최종 송금")
         final_guide = game.get_settlement_guide()
         for line in final_guide: st.success(line)
-            
         if st.button("새 게임 시작", type="primary"):
             st.session_state.clear()
             st.rerun()
