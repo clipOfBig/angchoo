@@ -23,7 +23,6 @@ class GolfGame:
 
     def calculate_hole(self, scores):
         logs = []
-        
         min_score = min(scores.values())
         winners = [p for p, s in scores.items() if s == min_score]
         
@@ -56,7 +55,6 @@ class GolfGame:
                 if p not in winners:
                     diff = score - min_score
                     amount_per_winner = diff * 1000 
-                    
                     for w in winners:
                         round_ledger[p] -= amount_per_winner
                         round_ledger[w] += amount_per_winner
@@ -77,35 +75,21 @@ class GolfGame:
     def simplify_transactions(self, ledger):
         receivers = []
         senders = []
-
         for p, amount in ledger.items():
-            if amount > 0:
-                receivers.append({'player': p, 'amount': amount})
-            elif amount < 0:
-                senders.append({'player': p, 'amount': -amount})
-
+            if amount > 0: receivers.append({'player': p, 'amount': amount})
+            elif amount < 0: senders.append({'player': p, 'amount': -amount})
         receivers.sort(key=lambda x: x['amount'], reverse=True)
         senders.sort(key=lambda x: x['amount'], reverse=True)
-
         trans_list = []
-        r_idx = 0
-        s_idx = 0
-
+        r_idx, s_idx = 0, 0
         while r_idx < len(receivers) and s_idx < len(senders):
-            receiver = receivers[r_idx]
-            sender = senders[s_idx]
-
+            receiver, sender = receivers[r_idx], senders[s_idx]
             amount = min(receiver['amount'], sender['amount'])
-
-            if amount > 0:
-                trans_list.append(f"**{sender['player'].name}** ➡️ **{receiver['player'].name}**: `{amount:,}원`")
-
+            if amount > 0: trans_list.append(f"**{sender['player'].name}** ➡️ **{receiver['player'].name}**: `{amount:,}원`")
             receiver['amount'] -= amount
             sender['amount'] -= amount
-
             if receiver['amount'] == 0: r_idx += 1
             if sender['amount'] == 0: s_idx += 1
-        
         return trans_list
 
     def commit_round(self, round_ledger, scores):
@@ -118,151 +102,86 @@ class GolfGame:
     def get_settlement_guide(self, current_ledger=None):
         temp_ledger = {p: p.money for p in self.players}
         if current_ledger:
-            for p, amt in current_ledger.items():
-                temp_ledger[p] += amt
+            for p, amt in current_ledger.items(): temp_ledger[p] += amt
         return self.simplify_transactions(temp_ledger)
     
     def generate_html_report(self):
-        html = """
-        <style>
-            table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; white-space: nowrap; }
-            th, td { border: 1px solid #ddd; padding: 4px 6px; }
-            th { background-color: #f8f9fa; position: sticky; left: 0; }
-            .pos { color: blue; font-weight: bold; }
-            .neg { color: red; font-weight: bold; }
-        </style>
-        """
-        html += "<h5>⛳️ 스코어 (Score)</h5>"
-        html += """<div style='overflow-x:auto;'><table><thead><tr><th>이름</th>"""
-        
+        html = """<style>table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; } 
+        th, td { border: 1px solid #ddd; padding: 2px 4px; } th { background-color: #f8f9fa; } 
+        .pos { color: blue; font-weight: bold; } .neg { color: red; font-weight: bold; }</style>"""
+        html += "<h5>⛳️ 스코어 기록</h5><div style='overflow-x:auto;'><table><thead><tr><th>이름</th>"
         max_holes = len(self.players[0].scores) if self.players else 0
-        for i in range(max_holes):
-            html += f"<th>{i+1}H</th>"
+        for i in range(max_holes): html += f"<th>{i+1}H</th>"
         html += "<th>Total</th></tr></thead><tbody>"
-        
         for p in self.players:
             html += f"<tr><td>{p.name}</td>"
-            for s in p.scores:
-                html += f"<td>{s}</td>"
+            for s in p.scores: html += f"<td>{s}</td>"
             html += f"<td>{sum(p.scores)}</td></tr>"
-        html += "</tbody></table></div>"
-        
-        html += "<h5>💰 홀별 손익 (단위: 천원)</h5>"
-        html += """<div style='overflow-x:auto;'><table><thead><tr><th>이름</th>"""
-        for i in range(max_holes):
-            html += f"<th>{i+1}H</th>"
-        html += "<th>계</th></tr></thead><tbody>"
-        
-        for p in self.players:
-            html += f"<tr><td>{p.name}</td>"
-            for amt in p.pnl_history:
-                val_k = int(amt / 1000)
-                color_class = "pos" if val_k > 0 else "neg" if val_k < 0 else ""
-                html += f"<td class='{color_class}'>{val_k:,}</td>"
-            
-            total_k = int(p.money / 1000)
-            color_class = "pos" if total_k > 0 else "neg" if total_k < 0 else ""
-            html += f"<td class='{color_class}'>{total_k:,}</td></tr>"
         html += "</tbody></table></div>"
         return html
 
 # ==========================================
-# [Streamlit View] UI 구성
+# [Streamlit View] UI 구성 (초고압축 모드)
 # ==========================================
-
 st.set_page_config(page_title="골프 정산", layout="centered", initial_sidebar_state="collapsed")
 
 st.markdown("""
     <style>
-        html, body, [class*="css"] {
-            font-size: 18px !important;
-        }
+        html, body, [class*="css"] { font-size: 18px !important; }
         .block-container { 
-            padding-top: 2rem !important; 
-            padding-bottom: 3rem !important; 
-            padding-left: 1rem !important; 
-            padding-right: 1rem !important;
-            max-width: 380px !important; 
-            margin: auto;
+            padding-top: 1rem !important; 
+            padding-bottom: 1rem !important; 
+            padding-left: 0.5rem !important; 
+            padding-right: 0.5rem !important;
+            max-width: 480px !important; margin: auto;
         }
         
-        h1 { font-size: 2.0rem !important; }
-        h3 { font-size: 1.5rem !important; }
-        p, div, label { font-size: 18px !important; }
+        /* [핵심] 행간 및 요소 간격 50% 축소 */
+        div[data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
+        div[data-testid="stHorizontalBlock"] { gap: 0.2rem !important; }
+        
+        h1 { font-size: 1.8rem !important; margin-bottom: 0.5rem !important; }
+        p, div, label, caption { line-height: 1.1 !important; margin-bottom: 0px !important; }
 
-        .stNumberInput input {
-            text-align: center !important; 
-            font-weight: bold !important;
-            font-size: 20px !important;
-            height: 2.8rem !important;
-        }
-        button[kind="secondary"] {
-            height: 2.8rem !important;
-            width: 2.8rem !important;
-        }
+        .stNumberInput input { height: 2.2rem !important; font-size: 18px !important; }
+        button[kind="secondary"] { height: 2.2rem !important; width: 2.2rem !important; }
         
         .stTextInput input, .stSelectbox div[data-baseweb="select"] div {
-            height: 2.8rem !important; 
-            min-height: 2.8rem !important;
-            font-size: 18px !important;
+            height: 2.2rem !important; min-height: 2.2rem !important; font-size: 18px !important;
         }
         
         .stButton button { 
-            width: 100%; 
-            border-radius: 10px; 
-            height: 3.5rem !important; 
-            font-size: 20px !important;
-            font-weight: bold !important;
+            height: 2.8rem !important; font-size: 18px !important; font-weight: bold !important;
+            border-radius: 8px; margin-top: 5px !important;
         }
 
-        /* [수정] 누적 정산 화면 및 테이블 행 높이 축소 */
-        [data-testid="stTable"] td, [data-testid="stDataFrame"] td {
-            padding: 1px !important; /* 상하 여백 줄임 */
-            line-height: 1.0 !important;
-        }
-        
-        /* 성공 메시지 박스(정산 가이드) 높이 축소 */
-        div[data-testid="stNotification"] {
-            padding: 0.5rem 1rem !important;
-            min-height: auto !important;
-        }
+        /* 테이블 및 알림창 압축 */
+        [data-testid="stTable"] td, [data-testid="stDataFrame"] td { padding: 2px !important; line-height: 1.0 !important; }
+        div[data-testid="stNotification"] { padding: 0.3rem 0.6rem !important; min-height: auto !important; }
+        div[data-testid="stExpander"] { margin-bottom: 0px !important; }
     </style>
 """, unsafe_allow_html=True)
 
 if 'game' not in st.session_state:
     st.session_state.game = None
-if 'step' not in st.session_state:
     st.session_state.step = 'setup' 
-if 'temp_ledger' not in st.session_state:
-    st.session_state.temp_ledger = None
-if 'temp_scores' not in st.session_state:
-    st.session_state.temp_scores = None
+if 'temp_ledger' not in st.session_state: st.session_state.temp_ledger = None
 
 def main():
     if st.session_state.step == 'setup':
         st.title("⛳️ 골프 정산")
-        num_players = st.selectbox("참가 인원", list(range(2, 13)), index=2)
-        
+        num_players = st.selectbox("인원", list(range(2, 13)), index=2)
         with st.form("setup_form"):
-            st.write(f"플레이어 {num_players}명 이름:")
             input_names = []
-            cols = st.columns(2) 
+            cols = st.columns(2)
             default_names = ["홍길동", "김프로", "박싱글", "최버디", "이장타", "정퍼터", "강아이언", "윤우드", "송어프로", "임샌드", "한이글", "오홀인원"]
-            
             for i in range(num_players):
                 val = default_names[i] if i < len(default_names) else f"선수{i+1}"
-                with cols[i % 2]:
-                    name = st.text_input(f"p{i}", value=val, key=f"p_input_{i}", label_visibility="collapsed")
-                    input_names.append(name)
-            
-            st.divider()
-            total_h = st.number_input("총 홀수", 1, 36, 18)
-            submit = st.form_submit_button("게임 시작", type="primary")
-
-            if submit:
+                with cols[i % 2]: input_names.append(st.text_input(f"p{i}", value=val, key=f"p_input_{i}", label_visibility="collapsed"))
+            total_h = st.number_input("홀수", 1, 36, 18)
+            if st.form_submit_button("시작", type="primary"):
                 names = [n.strip() for n in input_names if n.strip()]
-                if len(names) < 2:
-                    st.error("2명 이상 필요")
+                if len(names) < 2: st.error("2명 이상 필요")
                 else:
                     st.session_state.game = GolfGame()
                     st.session_state.game.total_holes = total_h
@@ -273,95 +192,49 @@ def main():
     elif st.session_state.step == 'playing':
         game = st.session_state.game
         st.info(f"🚩 **Hole {game.current_hole}** / {game.total_holes}")
-        
         tab1, tab2 = st.tabs(["📝 입력", "📊 현황"])
-        
         with tab1:
-            col_par, col_empty = st.columns([1, 2])
-            with col_par:
-                game.current_par = st.selectbox("Par", [3, 4, 5, 6], index=1)
-            
+            col_par, _ = st.columns([1, 2])
+            with col_par: game.current_par = st.selectbox("Par", [3, 4, 5, 6], index=1)
             with st.form("score_form"):
-                st.caption("스코어 (+/- 버튼)")
                 input_scores = {}
-                
                 for p in game.players:
-                    c_name, c_input = st.columns([0.4, 0.6])
-                    
-                    with c_name:
-                        st.markdown(f"<div style='margin-top: 12px; font-weight: bold; text-align: left; font-size: 18px;'>{p.name}</div>", unsafe_allow_html=True)
-                    
-                    with c_input:
-                        score_val = st.number_input(
-                            f"{p.name}_num",
-                            min_value=-10, max_value=10, value=0, step=1,
-                            format="%d", key=f"s_{p.name}",
-                            label_visibility="collapsed"
-                        )
-                        input_scores[p] = game.current_par + score_val
-                
-                if st.form_submit_button("💰 계산 (미리보기)", type="primary"):
-                    ledger, transactions, logs = game.calculate_hole(input_scores)
-                    st.session_state.temp_ledger = ledger
+                    c_n, c_i = st.columns([0.4, 0.6])
+                    c_n.markdown(f"<div style='margin-top: 8px; font-weight: bold; font-size: 18px;'>{p.name}</div>", unsafe_allow_html=True)
+                    input_scores[p] = game.current_par + c_i.number_input(f"s_{p.name}", -10, 10, 0, step=1, label_visibility="collapsed")
+                if st.form_submit_button("💰 계산", type="primary"):
+                    st.session_state.temp_ledger, st.session_state.transactions, st.session_state.logs = game.calculate_hole(input_scores)
                     st.session_state.temp_scores = input_scores
-                    st.session_state.logs = logs
-                    st.session_state.transactions = transactions
-            
             if st.session_state.get('temp_ledger'):
-                st.divider()
-                for log in st.session_state.logs:
-                    if "배판" in log: st.error(log)
-                    else: st.caption(log)
-                
+                for log in st.session_state.logs: st.caption(log)
                 if st.session_state.transactions:
-                    with st.expander("💸 송금 (합산)", expanded=True):
-                        for trans in st.session_state.transactions: st.write(trans)
-                
-                st.caption("이번 홀 손익")
+                    with st.expander("💸 송금 합산", expanded=True):
+                        for trans in st.session_state.transactions: st.markdown(f"<div style='font-size: 16px;'>{trans}</div>", unsafe_allow_html=True)
                 cols_res = st.columns(len(game.players))
                 for idx, (p, amt) in enumerate(st.session_state.temp_ledger.items()):
-                    with cols_res[idx]:
-                        color = "blue" if amt > 0 else "red" if amt < 0 else "black"
-                        val_str = f"{amt//1000}k" if abs(amt) >= 1000 else f"{amt}"
-                        st.markdown(f"<div style='text-align:center; font-size:16px;'>{p.name}<br><span style='color:{color}; font-weight:bold;'>{val_str}</span></div>", unsafe_allow_html=True)
-
-                col_conf1, col_conf2 = st.columns(2)
-                with col_conf1:
-                    if st.button("✅ 확정"):
-                        game.commit_round(st.session_state.temp_ledger, st.session_state.temp_scores)
-                        st.session_state.temp_ledger = None
-                        st.session_state.temp_scores = None
-                        if game.current_hole > game.total_holes: st.session_state.step = 'final'
-                        st.rerun()
-                with col_conf2:
-                    if st.button("🔄 재입력"):
-                        st.session_state.temp_ledger = None
-                        st.rerun()
+                    color = "blue" if amt > 0 else "red" if amt < 0 else "black"
+                    cols_res[idx].markdown(f"<div style='text-align:center; font-size:15px;'>{p.name}<br><span style='color:{color}; font-weight:bold;'>{amt//1000}k</span></div>", unsafe_allow_html=True)
+                c1, c2 = st.columns(2)
+                if c1.button("✅ 확정"):
+                    game.commit_round(st.session_state.temp_ledger, st.session_state.temp_scores)
+                    st.session_state.temp_ledger = None
+                    if game.current_hole > game.total_holes: st.session_state.step = 'final'
+                    st.rerun()
+                if c2.button("🔄 재입력"):
+                    st.session_state.temp_ledger = None
+                    st.rerun()
 
         with tab2:
-            st.subheader("누적 정산")
             guide = game.get_settlement_guide()
-            if guide and guide[0] != "정산할 내용이 없습니다 (0원).":
-                for line in guide: st.success(line)
-            else:
-                st.info("정산할 금액이 없습니다.")
-            st.divider()
-            score_summary = {p.name: sum(p.scores) for p in game.players}
-            st.dataframe(pd.DataFrame(list(score_summary.items()), columns=["이름", "Total"]), hide_index=True, use_container_width=True)
+            for line in guide: st.success(line) if guide[0] != "정산할 내용이 없습니다." else st.info(line)
+            st.dataframe(pd.DataFrame({p.name: [sum(p.scores)] for p in game.players}).T.rename(columns={0: "Total"}), use_container_width=True)
 
     elif st.session_state.step == 'final':
-        game = st.session_state.game
-        st.balloons()
-        st.title("🏆 최종 결과")
-        html_report = game.generate_html_report()
-        st.components.v1.html(html_report, height=500, scrolling=True)
-        st.divider()
-        st.subheader("💸 최종 송금")
-        final_guide = game.get_settlement_guide()
-        for line in final_guide: st.success(line)
-        if st.button("새 게임 시작", type="primary"):
+        st.title("🏆 결과")
+        st.components.v1.html(game.generate_html_report(), height=400, scrolling=True)
+        for line in game.get_settlement_guide(): st.success(line)
+        if st.button("새 게임", type="primary"):
             st.session_state.clear()
             st.rerun()
 
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__': main()
