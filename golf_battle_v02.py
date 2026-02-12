@@ -274,7 +274,7 @@ def main():
                 # [수정] 2열 배치를 제거하고 세로 1열로 나열
                 for p in game.players:
                     # 이름과 입력창 비율 조정 (이름 40%, 버튼 60%)
-                    c_name, c_input = st.columns([0.4, 0.4])
+                    c_name, c_input = st.columns([0.2, 0.2])
                     
                     with c_name:
                         st.markdown(f"<div style='margin-top: 12px; font-weight: bold; text-align: left; font-size: 18px;'>{p.name}</div>", unsafe_allow_html=True)
