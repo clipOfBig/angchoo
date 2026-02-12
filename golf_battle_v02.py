@@ -172,7 +172,6 @@ class GolfGame:
 
 st.set_page_config(page_title="골프 정산", layout="centered", initial_sidebar_state="collapsed")
 
-# [수정] max-width를 480px로 추가 축소하여 창 너비를 더 좁게 조정
 st.markdown("""
     <style>
         html, body, [class*="css"] {
@@ -183,7 +182,7 @@ st.markdown("""
             padding-bottom: 3rem !important; 
             padding-left: 1rem !important; 
             padding-right: 1rem !important;
-            max-width: 350px !important; /* 창 너비를 추가로 약 20% 더 축소 */
+            max-width: 480px !important; 
             margin: auto;
         }
         
@@ -214,6 +213,18 @@ st.markdown("""
             height: 3.5rem !important; 
             font-size: 20px !important;
             font-weight: bold !important;
+        }
+
+        /* [수정] 누적 정산 화면 및 테이블 행 높이 축소 */
+        [data-testid="stTable"] td, [data-testid="stDataFrame"] td {
+            padding: 4px !important; /* 상하 여백 줄임 */
+            line-height: 1.2 !important;
+        }
+        
+        /* 성공 메시지 박스(정산 가이드) 높이 축소 */
+        div[data-testid="stNotification"] {
+            padding: 0.5rem 1rem !important;
+            min-height: auto !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -275,10 +286,10 @@ def main():
                 input_scores = {}
                 
                 for p in game.players:
-                    c_name, c_input = st.columns([0.3, 0.3])
+                    c_name, c_input = st.columns([0.4, 0.6])
                     
                     with c_name:
-                        st.markdown(f"<div style='margin-top: 12px; font-weight: bold; text-align: right; font-size: 18px;'>{p.name}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='margin-top: 12px; font-weight: bold; text-align: left; font-size: 18px;'>{p.name}</div>", unsafe_allow_html=True)
                     
                     with c_input:
                         score_val = st.number_input(
@@ -332,7 +343,8 @@ def main():
             guide = game.get_settlement_guide()
             if guide and guide[0] != "정산할 내용이 없습니다 (0원).":
                 for line in guide: st.success(line)
-            else: st.info("정산할 금액이 없습니다.")
+            else:
+                st.info("정산할 금액이 없습니다.")
             st.divider()
             score_summary = {p.name: sum(p.scores) for p in game.players}
             st.dataframe(pd.DataFrame(list(score_summary.items()), columns=["이름", "Total"]), hide_index=True, use_container_width=True)
