@@ -172,7 +172,7 @@ class GolfGame:
 
 st.set_page_config(page_title="골프 정산", layout="centered", initial_sidebar_state="collapsed")
 
-# [수정] max-width를 80% 수준(약 600px)으로 줄여 너비 조정
+# [수정] max-width를 480px로 추가 축소하여 창 너비를 더 좁게 조정
 st.markdown("""
     <style>
         html, body, [class*="css"] {
@@ -183,7 +183,7 @@ st.markdown("""
             padding-bottom: 3rem !important; 
             padding-left: 1rem !important; 
             padding-right: 1rem !important;
-            max-width: 600px !important; /* 전체 창 너비를 약 20% 축소 효과 */
+            max-width: 480px !important; /* 창 너비를 추가로 약 20% 더 축소 */
             margin: auto;
         }
         
