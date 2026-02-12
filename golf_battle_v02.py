@@ -130,10 +130,11 @@ class GolfGame:
         return self.simplify_transactions(temp_ledger)
     
     def generate_html_report(self):
+        # [모바일 최적화] 리포트 폰트 12px로 복구 (가독성 확보)
         html = """
         <style>
-            table { width: 100%; border-collapse: collapse; font-size: 10px; text-align: center; white-space: nowrap; }
-            th, td { border: 1px solid #ddd; padding: 2px 4px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; white-space: nowrap; }
+            th, td { border: 1px solid #ddd; padding: 4px 6px; }
             th { background-color: #f8f9fa; position: sticky; left: 0; }
             .pos { color: blue; font-weight: bold; }
             .neg { color: red; font-weight: bold; }
@@ -174,61 +175,62 @@ class GolfGame:
         return html
 
 # ==========================================
-# [Streamlit View] UI 구성 (초소형 + 슬라이더 모드)
+# [Streamlit View] UI 구성 (확대 + 좌측 슬라이더)
 # ==========================================
 
 st.set_page_config(page_title="골프 정산", layout="centered", initial_sidebar_state="collapsed")
 
-# [CSS] 슬라이더 및 전체 UI 컴팩트화
+# [CSS] 글자 크기 16px로 확대, 입력창 높이 증가
 st.markdown("""
     <style>
-        /* 기본 폰트 및 여백 */
+        /* 1. 기본 폰트 크기 확대 (13px -> 16px) */
         html, body, [class*="css"] {
-            font-size: 13px !important;
+            font-size: 16px !important;
         }
         .block-container { 
             padding-top: 3rem !important; 
-            padding-bottom: 2rem !important; 
+            padding-bottom: 3rem !important; 
             padding-left: 0.5rem !important; 
             padding-right: 0.5rem !important; 
         }
         
-        /* 제목 스타일 */
-        h1 { font-size: 1.4rem !important; padding-bottom: 0.5rem !important; }
-        h3 { font-size: 1.1rem !important; padding-top: 0.5rem !important; }
-        p, div, label { font-size: 13px !important; }
+        /* 2. 제목 크기 조정 */
+        h1 { font-size: 1.8rem !important; padding-bottom: 0.5rem !important; }
+        h3 { font-size: 1.3rem !important; padding-top: 0.5rem !important; }
+        p, div, label { font-size: 16px !important; }
 
-        /* 슬라이더(Select Slider) 스타일 최적화 */
+        /* 3. 슬라이더 스타일 */
         div[data-baseweb="slider"] {
-            padding-top: 0px !important;
-            padding-bottom: 0px !important;
-            margin-top: -10px !important; /* 슬라이더 위쪽 여백 줄이기 */
+            padding-top: 5px !important;
+            padding-bottom: 5px !important;
+            margin-top: -5px !important; 
         }
-        /* 슬라이더 라벨(숫자) 폰트 */
         div[data-testid="stThumbValue"] {
-            font-size: 12px !important;
+            font-size: 14px !important;
             font-weight: bold !important;
         }
 
-        /* 입력창(이름 입력 등) 높이 축소 */
+        /* 4. 입력창 높이 확보 (터치 편의성) */
         .stTextInput input, .stSelectbox div[data-baseweb="select"] div, .stNumberInput input {
-            height: 2.0rem !important;
-            min-height: 2.0rem !important;
-            font-size: 13px !important;
+            height: 2.8rem !important; /* 높이 키움 */
+            min-height: 2.8rem !important;
+            font-size: 16px !important;
         }
         
-        /* 위젯 간격 최소화 */
-        div[data-testid="column"] { gap: 0rem !important; }
-        div[data-testid="stVerticalBlock"] { gap: 0.5rem !important; }
-        
-        /* 버튼 스타일 */
+        /* 5. 버튼 크기 및 폰트 확대 */
         .stButton button { 
             width: 100%; 
-            border-radius: 8px; 
-            height: 2.2rem !important; 
-            min-height: 2.2rem !important;
-            font-size: 13px !important;
-            padding: 0px !important;
+            border-radius: 10px; 
+            height: 3.0rem !important; /* 버튼 키움 */
+            min-height: 3.0rem !important;
+            font-size: 16px !important;
+            margin-top: 10px !important;
+        }
+        
+        /* 탭 버튼 */
+        .stTabs [data-baseweb="tab"] {
+            height: 3.0rem !important;
+            font-size: 16px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -298,31 +300,24 @@ def main():
                 st.caption("스코어 (슬라이더로 선택)")
                 input_scores = {}
                 
-                # [수정] 슬라이더용 옵션 범위 (-6 ~ +6)
-                # 왼쪽(마이너스, Good) <---> 오른쪽(플러스, Bad)
                 score_options = list(range(-6, 7))
-                
                 def format_score_label(val):
-                    if val == 0: return "Par(0)"
+                    if val == 0: return "0(Par)"
                     elif val > 0: return f"+{val}"
                     else: return str(val)
-                
-                # 0(Par)가 기본 선택되도록
                 default_val = 0
 
+                # 2열 그리드
                 grid_cols = st.columns(2)
                 
                 for idx, p in enumerate(game.players):
                     with grid_cols[idx % 2]:
-                        # 이름(0.3) - 슬라이더(0.7) 비율
-                        c_name, c_input = st.columns([0.35, 0.65])
-                        
-                        with c_name:
-                            # 이름이 길어지면 ... 처리
-                            st.markdown(f"<div style='margin-top: 10px; font-weight: bold; text-align: right; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>{p.name}</div>", unsafe_allow_html=True)
+                        # [핵심 수정] 왼쪽: 슬라이더(50%), 오른쪽: 이름(50%)
+                        # 슬라이더 길이를 줄이기 위해 비율 조정
+                        c_input, c_name = st.columns([0.55, 0.45])
                         
                         with c_input:
-                            # [핵심 변경] st.select_slider 사용 -> 키보드 안 뜸!
+                            # 슬라이더 (왼쪽)
                             relative_score = st.select_slider(
                                 f"{p.name}_slider", 
                                 options=score_options,
@@ -332,6 +327,10 @@ def main():
                                 label_visibility="collapsed"
                             )
                             input_scores[p] = game.current_par + relative_score
+                        
+                        with c_name:
+                            # 이름 (오른쪽) - 폰트 크기 키움 (16px)
+                            st.markdown(f"<div style='margin-top: 10px; font-weight: bold; text-align: left; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>{p.name}</div>", unsafe_allow_html=True)
                 
                 st.write("")
                 if st.form_submit_button("💰 계산 (미리보기)", type="primary"):
@@ -361,7 +360,7 @@ def main():
                     with cols_res[idx]:
                         color = "blue" if amt > 0 else "red" if amt < 0 else "black"
                         val_str = f"{amt//1000}k" if abs(amt) >= 1000 else f"{amt}"
-                        st.markdown(f"<div style='text-align:center; font-size:11px;'>{p.name}<br><span style='color:{color}; font-weight:bold;'>{val_str}</span></div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='text-align:center; font-size:14px;'>{p.name}<br><span style='color:{color}; font-weight:bold;'>{val_str}</span></div>", unsafe_allow_html=True)
 
                 st.write("")
                 col_conf1, col_conf2 = st.columns(2)
