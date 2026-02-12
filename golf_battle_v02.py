@@ -130,7 +130,7 @@ class GolfGame:
         return self.simplify_transactions(temp_ledger)
     
     def generate_html_report(self):
-        # [모바일 최적화] 리포트 폰트 12px로 복구 (가독성 확보)
+        # [모바일 최적화] 리포트 폰트 12px
         html = """
         <style>
             table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; white-space: nowrap; }
@@ -175,15 +175,15 @@ class GolfGame:
         return html
 
 # ==========================================
-# [Streamlit View] UI 구성 (확대 + 좌측 슬라이더)
+# [Streamlit View] UI 구성 (이름 왼쪽, 슬라이더 오른쪽)
 # ==========================================
 
 st.set_page_config(page_title="골프 정산", layout="centered", initial_sidebar_state="collapsed")
 
-# [CSS] 글자 크기 16px로 확대, 입력창 높이 증가
+# [CSS] 글자 크기 16px, UI 최적화
 st.markdown("""
     <style>
-        /* 1. 기본 폰트 크기 확대 (13px -> 16px) */
+        /* 1. 기본 폰트 크기 확대 */
         html, body, [class*="css"] {
             font-size: 16px !important;
         }
@@ -210,9 +210,9 @@ st.markdown("""
             font-weight: bold !important;
         }
 
-        /* 4. 입력창 높이 확보 (터치 편의성) */
+        /* 4. 입력창 높이 확보 */
         .stTextInput input, .stSelectbox div[data-baseweb="select"] div, .stNumberInput input {
-            height: 2.8rem !important; /* 높이 키움 */
+            height: 2.8rem !important; 
             min-height: 2.8rem !important;
             font-size: 16px !important;
         }
@@ -221,13 +221,12 @@ st.markdown("""
         .stButton button { 
             width: 100%; 
             border-radius: 10px; 
-            height: 3.0rem !important; /* 버튼 키움 */
+            height: 3.0rem !important; 
             min-height: 3.0rem !important;
             font-size: 16px !important;
             margin-top: 10px !important;
         }
         
-        /* 탭 버튼 */
         .stTabs [data-baseweb="tab"] {
             height: 3.0rem !important;
             font-size: 16px !important;
@@ -312,12 +311,15 @@ def main():
                 
                 for idx, p in enumerate(game.players):
                     with grid_cols[idx % 2]:
-                        # [핵심 수정] 왼쪽: 슬라이더(50%), 오른쪽: 이름(50%)
-                        # 슬라이더 길이를 줄이기 위해 비율 조정
-                        c_input, c_name = st.columns([0.55, 0.45])
+                        # [핵심 수정] 왼쪽: 이름(40%), 오른쪽: 슬라이더(60%)
+                        c_name, c_input = st.columns([0.4, 0.6])
+                        
+                        with c_name:
+                            # 이름 (왼쪽 정렬)
+                            st.markdown(f"<div style='margin-top: 10px; font-weight: bold; text-align: left; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>{p.name}</div>", unsafe_allow_html=True)
                         
                         with c_input:
-                            # 슬라이더 (왼쪽)
+                            # 슬라이더 (오른쪽)
                             relative_score = st.select_slider(
                                 f"{p.name}_slider", 
                                 options=score_options,
@@ -327,10 +329,6 @@ def main():
                                 label_visibility="collapsed"
                             )
                             input_scores[p] = game.current_par + relative_score
-                        
-                        with c_name:
-                            # 이름 (오른쪽) - 폰트 크기 키움 (16px)
-                            st.markdown(f"<div style='margin-top: 10px; font-weight: bold; text-align: left; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>{p.name}</div>", unsafe_allow_html=True)
                 
                 st.write("")
                 if st.form_submit_button("💰 계산 (미리보기)", type="primary"):
