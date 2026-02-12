@@ -132,8 +132,8 @@ class GolfGame:
     def generate_html_report(self):
         html = """
         <style>
-            table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; white-space: nowrap; }
-            th, td { border: 1px solid #ddd; padding: 4px; }
+            table { width: 100%; border-collapse: collapse; font-size: 10px; text-align: center; white-space: nowrap; }
+            th, td { border: 1px solid #ddd; padding: 2px 4px; }
             th { background-color: #f8f9fa; position: sticky; left: 0; }
             .pos { color: blue; font-weight: bold; }
             .neg { color: red; font-weight: bold; }
@@ -174,22 +174,62 @@ class GolfGame:
         return html
 
 # ==========================================
-# [Streamlit View] UI 구성
+# [Streamlit View] UI 구성 (초소형 + 슬라이더 모드)
 # ==========================================
 
 st.set_page_config(page_title="골프 정산", layout="centered", initial_sidebar_state="collapsed")
 
+# [CSS] 슬라이더 및 전체 UI 컴팩트화
 st.markdown("""
     <style>
-        .block-container { 
-            padding-top: 5rem; 
-            padding-bottom: 5rem; 
-            padding-left: 1rem; 
-            padding-right: 1rem; 
+        /* 기본 폰트 및 여백 */
+        html, body, [class*="css"] {
+            font-size: 13px !important;
         }
-        .stButton button { width: 100%; border-radius: 12px; height: 3em; }
-        h1 { font-size: 1.8rem; }
-        h3 { font-size: 1.4rem; }
+        .block-container { 
+            padding-top: 3rem !important; 
+            padding-bottom: 2rem !important; 
+            padding-left: 0.5rem !important; 
+            padding-right: 0.5rem !important; 
+        }
+        
+        /* 제목 스타일 */
+        h1 { font-size: 1.4rem !important; padding-bottom: 0.5rem !important; }
+        h3 { font-size: 1.1rem !important; padding-top: 0.5rem !important; }
+        p, div, label { font-size: 13px !important; }
+
+        /* 슬라이더(Select Slider) 스타일 최적화 */
+        div[data-baseweb="slider"] {
+            padding-top: 0px !important;
+            padding-bottom: 0px !important;
+            margin-top: -10px !important; /* 슬라이더 위쪽 여백 줄이기 */
+        }
+        /* 슬라이더 라벨(숫자) 폰트 */
+        div[data-testid="stThumbValue"] {
+            font-size: 12px !important;
+            font-weight: bold !important;
+        }
+
+        /* 입력창(이름 입력 등) 높이 축소 */
+        .stTextInput input, .stSelectbox div[data-baseweb="select"] div, .stNumberInput input {
+            height: 2.0rem !important;
+            min-height: 2.0rem !important;
+            font-size: 13px !important;
+        }
+        
+        /* 위젯 간격 최소화 */
+        div[data-testid="column"] { gap: 0rem !important; }
+        div[data-testid="stVerticalBlock"] { gap: 0.5rem !important; }
+        
+        /* 버튼 스타일 */
+        .stButton button { 
+            width: 100%; 
+            border-radius: 8px; 
+            height: 2.2rem !important; 
+            min-height: 2.2rem !important;
+            font-size: 13px !important;
+            padding: 0px !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -204,14 +244,15 @@ if 'temp_scores' not in st.session_state:
 
 def main():
     if st.session_state.step == 'setup':
-        st.title("⛳️ 골프 정산 시작")
+        st.title("⛳️ 골프 정산")
         
-        num_players = st.selectbox("참가 인원 선택", list(range(2, 13)), index=2)
+        num_players = st.selectbox("참가 인원", list(range(2, 13)), index=2)
         
         with st.form("setup_form"):
-            st.write(f"플레이어 {num_players}명의 이름을 입력하세요:")
+            st.write(f"플레이어 {num_players}명 이름:")
             input_names = []
             
+            # 모바일 2열 배치
             cols = st.columns(2) 
             
             default_names = [
@@ -223,17 +264,17 @@ def main():
             for i in range(num_players):
                 val = default_names[i] if i < len(default_names) else f"선수{i+1}"
                 with cols[i % 2]:
-                    name = st.text_input(f"선수 {i+1}", value=val, key=f"p_input_{i}")
+                    name = st.text_input(f"p{i}", value=val, key=f"p_input_{i}", label_visibility="collapsed")
                     input_names.append(name)
             
             st.divider()
             total_h = st.number_input("총 홀수", 1, 36, 18)
-            submit = st.form_submit_button("게임 시작 (Start)", type="primary")
+            submit = st.form_submit_button("게임 시작", type="primary")
 
             if submit:
                 names = [n.strip() for n in input_names if n.strip()]
                 if len(names) < 2:
-                    st.error("최소 2명 이상의 플레이어가 필요합니다.")
+                    st.error("2명 이상 필요")
                 else:
                     st.session_state.game = GolfGame()
                     st.session_state.game.total_holes = total_h
@@ -246,42 +287,54 @@ def main():
         
         st.info(f"🚩 **Hole {game.current_hole}** / {game.total_holes} (Par {game.current_par})")
         
-        tab1, tab2 = st.tabs(["📝 스코어 입력", "📊 현재 현황"])
+        tab1, tab2 = st.tabs(["📝 입력", "📊 현황"])
         
         with tab1:
-            st.write("##### Par 변경")
-            game.current_par = st.radio("Par", [3, 4, 5, 6], index=1, horizontal=True, label_visibility="collapsed")
+            col_par, col_empty = st.columns([1, 2])
+            with col_par:
+                game.current_par = st.selectbox("Par", [3, 4, 5, 6], index=1)
             
             with st.form("score_form"):
-                st.write("##### 스코어 (Par 기준 차이)")
+                st.caption("스코어 (슬라이더로 선택)")
                 input_scores = {}
                 
-                # [수정됨] +6 ~ -6 순서로 드롭다운 범위 생성
-                # [6, 5, 4, ..., 0, ..., -6]
-                score_options = list(range(6, -7, -1))
+                # [수정] 슬라이더용 옵션 범위 (-6 ~ +6)
+                # 왼쪽(마이너스, Good) <---> 오른쪽(플러스, Bad)
+                score_options = list(range(-6, 7))
                 
                 def format_score_label(val):
-                    if val == 0: return "0 (Par)"
+                    if val == 0: return "Par(0)"
                     elif val > 0: return f"+{val}"
                     else: return str(val)
+                
+                # 0(Par)가 기본 선택되도록
+                default_val = 0
 
-                # 0(Par)가 위치한 인덱스를 찾아서 기본값으로 설정
-                default_index = score_options.index(0)
-
-                cols = st.columns(2)
+                grid_cols = st.columns(2)
+                
                 for idx, p in enumerate(game.players):
-                    with cols[idx % 2]:
-                        relative_score = st.selectbox(
-                            f"**{p.name}**", 
-                            options=score_options,
-                            format_func=format_score_label,
-                            index=default_index, # 0 (Par)가 기본값
-                            key=f"s_{p.name}"
-                        )
-                        input_scores[p] = game.current_par + relative_score
+                    with grid_cols[idx % 2]:
+                        # 이름(0.3) - 슬라이더(0.7) 비율
+                        c_name, c_input = st.columns([0.35, 0.65])
+                        
+                        with c_name:
+                            # 이름이 길어지면 ... 처리
+                            st.markdown(f"<div style='margin-top: 10px; font-weight: bold; text-align: right; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>{p.name}</div>", unsafe_allow_html=True)
+                        
+                        with c_input:
+                            # [핵심 변경] st.select_slider 사용 -> 키보드 안 뜸!
+                            relative_score = st.select_slider(
+                                f"{p.name}_slider", 
+                                options=score_options,
+                                value=default_val,
+                                format_func=format_score_label,
+                                key=f"s_{p.name}",
+                                label_visibility="collapsed"
+                            )
+                            input_scores[p] = game.current_par + relative_score
                 
                 st.write("")
-                if st.form_submit_button("💰 정산 계산 (미리보기)", type="primary"):
+                if st.form_submit_button("💰 계산 (미리보기)", type="primary"):
                     ledger, transactions, logs = game.calculate_hole(input_scores)
                     st.session_state.temp_ledger = ledger
                     st.session_state.temp_scores = input_scores
@@ -290,30 +343,30 @@ def main():
             
             if st.session_state.get('temp_ledger'):
                 st.divider()
-                st.subheader("계산 결과")
                 
                 for log in st.session_state.logs:
                     if "배판" in log: st.error(log)
                     else: st.caption(log)
                 
                 if st.session_state.transactions:
-                    with st.expander("💸 최종 송금 (합산)", expanded=True):
+                    with st.expander("💸 송금 (합산)", expanded=True):
                         for trans in st.session_state.transactions:
                             st.write(trans)
                 else:
                     st.info("거래 없음")
 
-                st.write("###### 이번 홀 손익")
+                st.caption("이번 홀 손익")
                 cols_res = st.columns(len(game.players))
                 for idx, (p, amt) in enumerate(st.session_state.temp_ledger.items()):
                     with cols_res[idx]:
                         color = "blue" if amt > 0 else "red" if amt < 0 else "black"
-                        st.markdown(f"<div style='text-align:center; font-size:0.8rem;'>{p.name}<br><span style='color:{color}; font-weight:bold;'>{amt//1000:,}k</span></div>", unsafe_allow_html=True)
+                        val_str = f"{amt//1000}k" if abs(amt) >= 1000 else f"{amt}"
+                        st.markdown(f"<div style='text-align:center; font-size:11px;'>{p.name}<br><span style='color:{color}; font-weight:bold;'>{val_str}</span></div>", unsafe_allow_html=True)
 
                 st.write("")
                 col_conf1, col_conf2 = st.columns(2)
                 with col_conf1:
-                    if st.button("✅ 확정 (Next)"):
+                    if st.button("✅ 확정"):
                         game.commit_round(st.session_state.temp_ledger, st.session_state.temp_scores)
                         st.session_state.temp_ledger = None
                         st.session_state.temp_scores = None
@@ -326,7 +379,7 @@ def main():
                         st.rerun()
 
         with tab2:
-            st.subheader("현재 누적 정산 (합산)")
+            st.subheader("누적 정산")
             guide = game.get_settlement_guide()
             if guide and guide[0] != "정산할 내용이 없습니다 (0원).":
                 for line in guide:
@@ -335,20 +388,19 @@ def main():
                 st.info("정산할 금액이 없습니다.")
             
             st.divider()
-            st.caption("누적 스코어 요약")
             score_summary = {p.name: sum(p.scores) for p in game.players}
-            st.dataframe(pd.DataFrame(list(score_summary.items()), columns=["이름", "Total Score"]), hide_index=True, use_container_width=True)
+            st.dataframe(pd.DataFrame(list(score_summary.items()), columns=["이름", "Total"]), hide_index=True, use_container_width=True)
 
     elif st.session_state.step == 'final':
         game = st.session_state.game
         st.balloons()
-        st.title("🏆 최종 경기 결과")
+        st.title("🏆 최종 결과")
         
         html_report = game.generate_html_report()
         st.components.v1.html(html_report, height=500, scrolling=True)
         
         st.divider()
-        st.subheader("💸 최종 송금 가이드 (합산)")
+        st.subheader("💸 최종 송금")
         final_guide = game.get_settlement_guide()
         for line in final_guide: st.success(line)
             
