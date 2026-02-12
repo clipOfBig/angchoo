@@ -106,7 +106,7 @@ class GolfGame:
         return self.simplify_transactions(temp_ledger)
     
     def generate_html_report(self):
-        html = """<style>table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; } 
+        html = """<style>table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; } 
         th, td { border: 1px solid #ddd; padding: 2px 4px; } th { background-color: #f8f9fa; } 
         .pos { color: blue; font-weight: bold; } .neg { color: red; font-weight: bold; }</style>"""
         html += "<h5>⛳️ 스코어 기록</h5><div style='overflow-x:auto;'><table><thead><tr><th>이름</th>"
@@ -121,13 +121,15 @@ class GolfGame:
         return html
 
 # ==========================================
-# [Streamlit View] UI 구성 (초고압축 모드)
+# [Streamlit View] UI 구성 (압축 및 소형화 모드)
 # ==========================================
 st.set_page_config(page_title="골프 정산", layout="centered", initial_sidebar_state="collapsed")
 
 st.markdown("""
     <style>
-        html, body, [class*="css"] { font-size: 18px !important; }
+        /* 1. 전체 글자 크기 10% 축소 (18px -> 16.2px) */
+        html, body, [class*="css"] { font-size: 16.2px !important; }
+        
         .block-container { 
             padding-top: 1rem !important; 
             padding-bottom: 1rem !important; 
@@ -135,21 +137,31 @@ st.markdown("""
             padding-right: 0.5rem !important;
             max-width: 480px !important; margin: auto;
         }
-        div[data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
-        div[data-testid="stHorizontalBlock"] { gap: 0.2rem !important; }
-        h1 { font-size: 1.8rem !important; margin-bottom: 0.5rem !important; }
-        p, div, label, caption { line-height: 1.1 !important; margin-bottom: 0px !important; }
-        .stNumberInput input { height: 2.2rem !important; font-size: 18px !important; }
-        button[kind="secondary"] { height: 2.2rem !important; width: 2.2rem !important; }
+        
+        /* 2. 줄 간격 및 요소 간격 15% 이상 압축 */
+        div[data-testid="stVerticalBlock"] { gap: 0.35rem !important; }
+        div[data-testid="stHorizontalBlock"] { gap: 0.18rem !important; }
+        
+        h1 { font-size: 1.6rem !important; margin-bottom: 0.4rem !important; }
+        p, div, label, caption { line-height: 1.05 !important; margin-bottom: 0px !important; }
+
+        /* 입력 위젯 크기 조절 */
+        .stNumberInput input { height: 2.1rem !important; font-size: 16px !important; }
+        button[kind="secondary"] { height: 2.1rem !important; width: 2.1rem !important; }
+        
         .stTextInput input, .stSelectbox div[data-baseweb="select"] div {
-            height: 2.2rem !important; min-height: 2.2rem !important; font-size: 18px !important;
+            height: 2.1rem !important; min-height: 2.1rem !important; font-size: 16px !important;
         }
+        
         .stButton button { 
-            height: 2.8rem !important; font-size: 18px !important; font-weight: bold !important;
-            border-radius: 8px; margin-top: 5px !important;
+            height: 2.6rem !important; font-size: 16.2px !important; font-weight: bold !important;
+            border-radius: 6px; margin-top: 2px !important;
         }
-        [data-testid="stTable"] td, [data-testid="stDataFrame"] td { padding: 2px !important; line-height: 1.0 !important; }
-        div[data-testid="stNotification"] { padding: 0.3rem 0.6rem !important; min-height: auto !important; }
+
+        /* 테이블 및 기타 요소 압축 */
+        [data-testid="stTable"] td, [data-testid="stDataFrame"] td { padding: 1.5px !important; line-height: 1.0 !important; }
+        div[data-testid="stNotification"] { padding: 0.25rem 0.5rem !important; min-height: auto !important; }
+        div[data-testid="stExpander"] { margin-bottom: 0px !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -191,7 +203,7 @@ def main():
                 input_scores = {}
                 for p in game.players:
                     c_n, c_i = st.columns([0.4, 0.6])
-                    c_n.markdown(f"<div style='margin-top: 8px; font-weight: bold; font-size: 18px;'>{p.name}</div>", unsafe_allow_html=True)
+                    c_n.markdown(f"<div style='margin-top: 7px; font-weight: bold; font-size: 16px;'>{p.name}</div>", unsafe_allow_html=True)
                     input_scores[p] = game.current_par + c_i.number_input(f"s_{p.name}", -10, 10, 0, step=1, label_visibility="collapsed")
                 if st.form_submit_button("💰 계산", type="primary"):
                     st.session_state.temp_ledger, st.session_state.transactions, st.session_state.logs = game.calculate_hole(input_scores)
@@ -200,11 +212,11 @@ def main():
                 for log in st.session_state.logs: st.caption(log)
                 if st.session_state.transactions:
                     with st.expander("💸 송금 합산", expanded=True):
-                        for trans in st.session_state.transactions: st.markdown(f"<div style='font-size: 16px;'>{trans}</div>", unsafe_allow_html=True)
+                        for trans in st.session_state.transactions: st.markdown(f"<div style='font-size: 15px;'>{trans}</div>", unsafe_allow_html=True)
                 cols_res = st.columns(len(game.players))
                 for idx, (p, amt) in enumerate(st.session_state.temp_ledger.items()):
                     color = "blue" if amt > 0 else "red" if amt < 0 else "black"
-                    cols_res[idx].markdown(f"<div style='text-align:center; font-size:15px;'>{p.name}<br><span style='color:{color}; font-weight:bold;'>{amt//1000}k</span></div>", unsafe_allow_html=True)
+                    cols_res[idx].markdown(f"<div style='text-align:center; font-size:14px;'>{p.name}<br><span style='color:{color}; font-weight:bold;'>{amt//1000}k</span></div>", unsafe_allow_html=True)
                 c1, c2 = st.columns(2)
                 if c1.button("✅ 확정"):
                     game.commit_round(st.session_state.temp_ledger, st.session_state.temp_scores)
@@ -216,29 +228,22 @@ def main():
                     st.rerun()
 
         with tab2:
-            # [에러 수정 포인트] 한 줄 if-else 문을 표준 여러 줄 문법으로 변경
             guide = game.get_settlement_guide()
             if not guide or guide[0] == "정산할 내용이 없습니다.":
                 st.info("정산할 금액이 없습니다.")
             else:
-                for line in guide:
-                    st.success(line)
-            
+                for line in guide: st.success(line)
             st.divider()
-            # 간단 테이블
             score_summary_df = pd.DataFrame({p.name: [sum(p.scores)] for p in game.players}).T.rename(columns={0: "Total"})
             st.dataframe(score_summary_df, use_container_width=True)
 
     elif st.session_state.step == 'final':
         st.title("🏆 결과")
         st.components.v1.html(game.generate_html_report(), height=400, scrolling=True)
-        # 최종 결과 송금 가이드 출력 부분도 수정
         final_guide = game.get_settlement_guide()
-        for line in final_guide:
-            st.success(line)
+        for line in final_guide: st.success(line)
         if st.button("새 게임", type="primary"):
             st.session_state.clear()
             st.rerun()
 
-if __name__ == '__main__': 
-    main()
+if __name__ == '__main__': main()
