@@ -282,7 +282,7 @@ def main():
                 for idx, p in enumerate(game.players):
                     with grid_cols[idx % 2]:
                         # [수정] 이름 칸은 넓게(0.6), 스코어 토글 버튼은 좁게(0.4) 배치
-                        c_name, c_input = st.columns([0.6, 0.4])
+                        c_name, c_input = st.columns([0.3, 0.3])
                         
                         with c_name:
                             st.markdown(f"<div style='margin-top: 12px; font-weight: bold; text-align: left; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>{p.name}</div>", unsafe_allow_html=True)
