@@ -123,10 +123,11 @@ class GolfGame:
         return self.simplify_transactions(temp_ledger)
     
     def generate_html_report(self):
+        # [수정] 리포트 글자 크기도 키움
         html = """
         <style>
-            table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; white-space: nowrap; }
-            th, td { border: 1px solid #ddd; padding: 4px 6px; }
+            table { width: 100%; border-collapse: collapse; font-size: 16px; text-align: center; white-space: nowrap; }
+            th, td { border: 1px solid #ddd; padding: 6px 8px; }
             th { background-color: #f8f9fa; position: sticky; left: 0; }
             .pos { color: blue; font-weight: bold; }
             .neg { color: red; font-weight: bold; }
@@ -167,17 +168,17 @@ class GolfGame:
         return html
 
 # ==========================================
-# [Streamlit View] UI 구성 (토글/버튼형 최적화)
+# [Streamlit View] UI 구성 (확대 모드)
 # ==========================================
 
 st.set_page_config(page_title="골프 정산", layout="centered", initial_sidebar_state="collapsed")
 
-# [CSS] 스타일 최적화
+# [CSS] 글자 크기 24px로 대폭 확대 및 UI 요소 높이 증가
 st.markdown("""
     <style>
-        /* 1. 기본 폰트 크기 */
+        /* 1. 기본 폰트 크기 확대 (24px) */
         html, body, [class*="css"] {
-            font-size: 16px !important;
+            font-size: 24px !important;
         }
         .block-container { 
             padding-top: 3rem !important; 
@@ -187,44 +188,51 @@ st.markdown("""
         }
         
         /* 2. 제목 크기 */
-        h1 { font-size: 1.8rem !important; padding-bottom: 0.5rem !important; }
-        h3 { font-size: 1.3rem !important; padding-top: 0.5rem !important; }
-        p, div, label { font-size: 16px !important; }
+        h1 { font-size: 2.5rem !important; padding-bottom: 0.5rem !important; }
+        h3 { font-size: 1.8rem !important; padding-top: 0.5rem !important; }
+        p, div, label { font-size: 24px !important; }
 
-        /* 3. 숫자 입력창(Number Input) 스타일 - 토글 버튼처럼 보이게 */
+        /* 3. 숫자 입력창(Number Input) - 크게 */
         .stNumberInput input {
-            text-align: center !important; /* 숫자 가운데 정렬 */
+            text-align: center !important; 
             font-weight: bold !important;
-            font-size: 18px !important;
-            height: 3.0rem !important;
+            font-size: 26px !important;
+            height: 3.5rem !important; /* 높이 키움 */
         }
-        /* +/- 버튼 크기 키우기 */
+        /* +/- 버튼 크기 확대 */
         button[kind="secondary"] {
-            height: 3.0rem !important;
-            width: 3.0rem !important;
+            height: 3.5rem !important;
+            width: 3.5rem !important;
+        }
+        
+        /* +/- 아이콘 크기 확대 */
+        button[kind="secondary"] svg {
+            width: 24px !important;
+            height: 24px !important;
         }
 
-        /* 4. 입력창 및 버튼 크기 통일 */
+        /* 4. 텍스트 입력창 및 드롭다운 높이 */
         .stTextInput input, .stSelectbox div[data-baseweb="select"] div {
-            height: 3.0rem !important; 
-            min-height: 3.0rem !important;
-            font-size: 16px !important;
+            height: 3.5rem !important; 
+            min-height: 3.5rem !important;
+            font-size: 24px !important;
         }
         
         /* 5. 메인 버튼 확대 */
         .stButton button { 
             width: 100%; 
-            border-radius: 10px; 
-            height: 3.2rem !important; 
-            min-height: 3.2rem !important;
-            font-size: 17px !important;
-            margin-top: 10px !important;
+            border-radius: 12px; 
+            height: 4.0rem !important; 
+            min-height: 4.0rem !important;
+            font-size: 26px !important;
             font-weight: bold !important;
+            margin-top: 15px !important;
         }
         
+        /* 탭 버튼 확대 */
         .stTabs [data-baseweb="tab"] {
-            height: 3.0rem !important;
-            font-size: 16px !important;
+            height: 4.0rem !important;
+            font-size: 22px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -248,6 +256,7 @@ def main():
             st.write(f"플레이어 {num_players}명 이름:")
             input_names = []
             
+            # 모바일 2열 배치
             cols = st.columns(2) 
             
             default_names = [
@@ -290,7 +299,7 @@ def main():
                 game.current_par = st.selectbox("Par", [3, 4, 5, 6], index=1)
             
             with st.form("score_form"):
-                st.caption("스코어 ( +/- 버튼으로 조절 )")
+                st.caption("스코어 ( +/- 버튼 )")
                 input_scores = {}
                 
                 # 2열 그리드
@@ -298,28 +307,26 @@ def main():
                 
                 for idx, p in enumerate(game.players):
                     with grid_cols[idx % 2]:
-                        # [레이아웃] 이름(40%) - 숫자입력(60%)
-                        c_name, c_input = st.columns([0.4, 0.6])
+                        # [핵심 수정] 이름(30%) - 숫자입력(70%)
+                        # 이름 칸 너비를 줄여서 4글자 정도만 보이게 하고, 버튼 영역을 넓힘
+                        c_name, c_input = st.columns([0.3, 0.7])
                         
                         with c_name:
-                            # 이름 수직 중앙 정렬
-                            st.markdown(f"<div style='margin-top: 15px; font-weight: bold; text-align: left; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>{p.name}</div>", unsafe_allow_html=True)
+                            # 이름 수직 중앙 정렬 (큰 폰트)
+                            st.markdown(f"<div style='margin-top: 18px; font-weight: bold; text-align: right; font-size: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>{p.name}</div>", unsafe_allow_html=True)
                         
                         with c_input:
-                            # [핵심] number_input 사용 (토글/스테퍼 역할)
-                            # step=1 로 설정하여 + / - 버튼으로 조절
-                            # 모바일에서 숫자 부분을 터치하지 않고 +/- 만 누르면 키보드 안 뜸
+                            # 숫자 조절 버튼 (크게)
                             score_val = st.number_input(
                                 f"{p.name}_num",
                                 min_value=-10, 
                                 max_value=10, 
-                                value=0, # 기본값 0 (Par)
+                                value=0, 
                                 step=1,
-                                format="%d", # 정수만 표시 (e.g., 0, -1, +1)
+                                format="%d",
                                 key=f"s_{p.name}",
                                 label_visibility="collapsed"
                             )
-                            # 입력값은 Par 기준 차이 (0 = Par)
                             input_scores[p] = game.current_par + score_val
                 
                 st.write("")
@@ -350,7 +357,7 @@ def main():
                     with cols_res[idx]:
                         color = "blue" if amt > 0 else "red" if amt < 0 else "black"
                         val_str = f"{amt//1000}k" if abs(amt) >= 1000 else f"{amt}"
-                        st.markdown(f"<div style='text-align:center; font-size:14px;'>{p.name}<br><span style='color:{color}; font-weight:bold;'>{val_str}</span></div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='text-align:center; font-size:18px;'>{p.name}<br><span style='color:{color}; font-weight:bold;'>{val_str}</span></div>", unsafe_allow_html=True)
 
                 st.write("")
                 col_conf1, col_conf2 = st.columns(2)
