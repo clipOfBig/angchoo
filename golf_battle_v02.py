@@ -182,7 +182,7 @@ st.markdown("""
             padding-bottom: 3rem !important; 
             padding-left: 1rem !important; 
             padding-right: 1rem !important;
-            max-width: 480px !important; 
+            max-width: 380px !important; 
             margin: auto;
         }
         
@@ -217,8 +217,8 @@ st.markdown("""
 
         /* [수정] 누적 정산 화면 및 테이블 행 높이 축소 */
         [data-testid="stTable"] td, [data-testid="stDataFrame"] td {
-            padding: 4px !important; /* 상하 여백 줄임 */
-            line-height: 1.2 !important;
+            padding: 1px !important; /* 상하 여백 줄임 */
+            line-height: 1.0 !important;
         }
         
         /* 성공 메시지 박스(정산 가이드) 높이 축소 */
