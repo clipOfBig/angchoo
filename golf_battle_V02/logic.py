@@ -272,3 +272,43 @@ def calculate_transfer_details():
 
 def export_game_data(): return "{}"
 def load_game_data(f): return False
+
+# ... (위의 기존 코드들은 그대로 두세요) ...
+
+# --- [추가됨] 게임 전체 초기화 (리셋) ---
+def reset_all_data():
+    """구글 시트와 세션 데이터를 모두 초기화"""
+    # 1. 구글 시트 초기화 (내용 지우기)
+    wb = connect_to_sheet()
+    if wb:
+        try:
+            # Settings 시트 클리어
+            try:
+                ws_set = wb.worksheet('Settings')
+                ws_set.clear() # 모든 내용 삭제
+            except: pass
+            
+            # Scores 시트 클리어
+            try:
+                ws_sco = wb.worksheet('Scores')
+                ws_sco.clear() # 모든 내용 삭제
+            except: pass
+            
+            # 헤더 다시 생성 (초기 상태로 복구)
+            init_sheets(wb)
+            st.toast("구글 시트가 초기화되었습니다.")
+        except Exception as e:
+            st.error(f"시트 초기화 실패: {e}")
+
+    # 2. 세션 상태 초기화
+    st.session_state.players = []
+    st.session_state.game_info = {
+        'current_hole': 1, 'par': 4, 
+        'participants_count': 4, 'cart_count': 1,
+        'pars': {}
+    }
+    st.session_state.history = {}
+    st.session_state.step = 1
+    
+    # 리셋 확인창 상태 해제
+    st.session_state.show_reset_confirm = False

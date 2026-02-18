@@ -16,14 +16,42 @@ def apply_mobile_style():
     """, unsafe_allow_html=True)
 
 def show_sync_button():
-    # 동기화 버튼은 빨간색(primary)으로 눈에 띄게
     if st.button("🔄 최신 점수 불러오기 (동기화)", type="primary", use_container_width=True):
         logic.sync_data()
         st.toast("구글 시트 동기화 완료!", icon="✅")
         st.rerun()
 
+# --- [수정됨] 사이드바 공통 메뉴 (저장 + 리셋) ---
+def sidebar_menu():
+    with st.sidebar:
+        st.header("📂 파일 관리")
+        if hasattr(logic, 'export_game_data'):
+            st.download_button("💾 상태 저장", logic.export_game_data(), "golf.json", "application/json")
+        
+        st.markdown("---")
+        st.header("⚙️ 관리 기능")
+        
+        # 리셋 버튼 로직 (사이드바 내에서 동작)
+        if not st.session_state.get('show_reset_confirm', False):
+            if st.button("🚫 라운드 리셋", type="secondary"):
+                st.session_state.show_reset_confirm = True
+                st.rerun()
+        else:
+            st.warning("모든 데이터가 삭제됩니다.\n정말 초기화 할까요?")
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("예", type="primary"):
+                    logic.reset_all_data()
+                    st.rerun()
+            with c2:
+                if st.button("아니오"):
+                    st.session_state.show_reset_confirm = False
+                    st.rerun()
+
 def show_setup_screen():
     apply_mobile_style()
+    sidebar_menu() # 사이드바 메뉴 표시
+    
     st.title("⛳️ 골프 내기 정산")
     show_sync_button()
     
@@ -53,9 +81,7 @@ def show_setup_screen():
         input_names.append(name); input_carts.append(cart)
 
     st.markdown("---")
-    with st.sidebar:
-        st.header("파일 관리")
-        if hasattr(logic, 'export_game_data'): st.download_button("💾 상태 저장", logic.export_game_data(), "golf.json", "application/json")
+    
     if st.button("게임 시작 (설정 저장) ▶", use_container_width=True):
         logic.save_setup_data(num_p, num_c, input_names, input_carts)
         st.session_state.step = 2
@@ -63,6 +89,8 @@ def show_setup_screen():
 
 def show_score_screen():
     apply_mobile_style()
+    sidebar_menu() # 사이드바 메뉴 표시
+    
     st.title("📝 점수 입력")
     show_sync_button()
     
@@ -82,8 +110,6 @@ def show_score_screen():
         except ValueError: default_idx = 1
         par = st.selectbox("Par", options=par_options, index=default_idx, key=f"par_select_{selected_hole}")
     
-    # --- [수정됨] 스코어 리셋 버튼 (모바일 최적화) ---
-    # 빈 컬럼(columns)을 없애고 꽉 차게 배치하여 모바일에서 잘 보이게 함
     if st.button("🔄 이 홀 점수 리셋 (0)", use_container_width=True):
         for p in st.session_state.players:
             p['scores'][selected_hole] = par
@@ -91,7 +117,6 @@ def show_score_screen():
             st.session_state[widget_key] = 0
         st.toast("초기화 완료!", icon="↩️")
         st.rerun()
-    # -----------------------------------------------
 
     st.markdown("---")
     with st.container(height=500, border=False):
@@ -138,6 +163,8 @@ def show_score_screen():
 
 def show_result_screen():
     apply_mobile_style()
+    sidebar_menu() # 사이드바 메뉴 표시
+    
     current_hole = st.session_state.game_info['current_hole']
     st.title(f"⛳️ {current_hole}번홀 정산")
     show_sync_button()
