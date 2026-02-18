@@ -16,6 +16,7 @@ def apply_mobile_style():
     """, unsafe_allow_html=True)
 
 def show_sync_button():
+    # 동기화 버튼은 빨간색(primary)으로 눈에 띄게
     if st.button("🔄 최신 점수 불러오기 (동기화)", type="primary", use_container_width=True):
         logic.sync_data()
         st.toast("구글 시트 동기화 완료!", icon="✅")
@@ -81,18 +82,16 @@ def show_score_screen():
         except ValueError: default_idx = 1
         par = st.selectbox("Par", options=par_options, index=default_idx, key=f"par_select_{selected_hole}")
     
-    # 스코어 리셋 버튼
-    _, col_reset = st.columns([2, 1]) 
-    with col_reset:
-        if st.button("스코어 리셋", use_container_width=True):
-            for p in st.session_state.players:
-                # 1. 데이터 상의 점수를 Par로 초기화
-                p['scores'][selected_hole] = par
-                # 2. 세션 상태 값을 0으로 강제 변경 (화면 갱신용)
-                widget_key = f"score_rel_{selected_hole}_{p['id']}"
-                st.session_state[widget_key] = 0
-            st.toast("모든 스코어가 0(Par)으로 초기화되었습니다! 🔄")
-            st.rerun()
+    # --- [수정됨] 스코어 리셋 버튼 (모바일 최적화) ---
+    # 빈 컬럼(columns)을 없애고 꽉 차게 배치하여 모바일에서 잘 보이게 함
+    if st.button("🔄 이 홀 점수 리셋 (0)", use_container_width=True):
+        for p in st.session_state.players:
+            p['scores'][selected_hole] = par
+            widget_key = f"score_rel_{selected_hole}_{p['id']}"
+            st.session_state[widget_key] = 0
+        st.toast("초기화 완료!", icon="↩️")
+        st.rerun()
+    # -----------------------------------------------
 
     st.markdown("---")
     with st.container(height=500, border=False):
@@ -110,25 +109,17 @@ def show_score_screen():
                 c1, c2 = st.columns([2, 1.5])
                 with c1: st.write(f"**{p['name']}**")
                 with c2:
-                    # 1. 저장된 점수 계산
                     saved_abs_score = p['scores'].get(selected_hole, 0)
                     default_rel = saved_abs_score - par if saved_abs_score != 0 else 0
                     if default_rel not in score_options: default_rel = 0
                     
-                    # 2. [수정됨] 위젯 키 생성
                     widget_key = f"score_rel_{selected_hole}_{p['id']}"
-                    
-                    # 3. [수정됨] 세션 상태에 값이 없으면 초기값 설정
                     if widget_key not in st.session_state:
                         st.session_state[widget_key] = default_rel
                     
-                    # 4. [수정됨] index 파라미터를 제거하고 key만 사용 (경고 해결)
                     selected_rel = st.selectbox(
-                        f"{p['name']} 점수", 
-                        options=score_options, 
-                        format_func=format_score,
-                        key=widget_key, # index=... 부분 삭제됨
-                        label_visibility="collapsed"
+                        f"{p['name']} 점수", options=score_options, format_func=format_score,
+                        key=widget_key, label_visibility="collapsed"
                     )
                     temp_score_map[p['id']] = par + selected_rel
             st.write("") 
