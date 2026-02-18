@@ -31,7 +31,7 @@ def show_setup_screen():
     apply_mobile_style()
     sidebar_menu() 
     
-    st.title("⛳️ 골프 내기 정산(by 골프제미나니)")
+    st.title("⛳️ 골프 내기 정산(by 한유신)")
     show_sync_button()
     
     saved_p = st.session_state.game_info.get('participants_count', 4)
