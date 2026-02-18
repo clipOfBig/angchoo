@@ -21,36 +21,15 @@ def show_sync_button():
         st.toast("구글 시트 동기화 완료!", icon="✅")
         st.rerun()
 
-# --- [수정됨] 사이드바 공통 메뉴 (저장 + 리셋) ---
 def sidebar_menu():
     with st.sidebar:
         st.header("📂 파일 관리")
         if hasattr(logic, 'export_game_data'):
             st.download_button("💾 상태 저장", logic.export_game_data(), "golf.json", "application/json")
-        
-        st.markdown("---")
-        st.header("⚙️ 관리 기능")
-        
-        # 리셋 버튼 로직 (사이드바 내에서 동작)
-        if not st.session_state.get('show_reset_confirm', False):
-            if st.button("🚫 라운드 리셋", type="secondary"):
-                st.session_state.show_reset_confirm = True
-                st.rerun()
-        else:
-            st.warning("모든 데이터가 삭제됩니다.\n정말 초기화 할까요?")
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("예", type="primary"):
-                    logic.reset_all_data()
-                    st.rerun()
-            with c2:
-                if st.button("아니오"):
-                    st.session_state.show_reset_confirm = False
-                    st.rerun()
 
 def show_setup_screen():
     apply_mobile_style()
-    sidebar_menu() # 사이드바 메뉴 표시
+    sidebar_menu() 
     
     st.title("⛳️ 골프 내기 정산")
     show_sync_button()
@@ -58,9 +37,31 @@ def show_setup_screen():
     saved_p = st.session_state.game_info.get('participants_count', 4)
     saved_c = st.session_state.game_info.get('cart_count', 1)
     
+    # 인원 및 카트 수
     col1, col2 = st.columns(2)
     with col1: num_p = st.number_input("참가 인원 (최대 12)", 1, 12, saved_p, 1, key="ui_num_p")
     with col2: num_c = st.number_input("카트 수 (최대 3)", 1, 3, saved_c, 1, key="ui_num_c")
+    
+    # 라운드 리셋 버튼 (오른쪽 정렬)
+    _, col_reset_btn = st.columns([2, 1])
+    with col_reset_btn:
+        if not st.session_state.get('show_reset_confirm', False):
+            if st.button("🚫 라운드 리셋", use_container_width=True):
+                st.session_state.show_reset_confirm = True
+                st.rerun()
+
+    # 리셋 확인창
+    if st.session_state.get('show_reset_confirm', False):
+        st.warning("⚠️ 모든 데이터가 삭제됩니다. 초기화 할까요?")
+        c_yes, c_no = st.columns(2)
+        with c_yes:
+            if st.button("예 (초기화)", type="primary", use_container_width=True):
+                logic.reset_all_data()
+                st.rerun() # [핵심] 화면 새로고침
+        with c_no:
+            if st.button("아니오", use_container_width=True):
+                st.session_state.show_reset_confirm = False
+                st.rerun()
     
     st.markdown("---")
     col_header1, col_header2 = st.columns([2.5, 1.5])
@@ -89,7 +90,7 @@ def show_setup_screen():
 
 def show_score_screen():
     apply_mobile_style()
-    sidebar_menu() # 사이드바 메뉴 표시
+    sidebar_menu()
     
     st.title("📝 점수 입력")
     show_sync_button()
@@ -163,7 +164,7 @@ def show_score_screen():
 
 def show_result_screen():
     apply_mobile_style()
-    sidebar_menu() # 사이드바 메뉴 표시
+    sidebar_menu()
     
     current_hole = st.session_state.game_info['current_hole']
     st.title(f"⛳️ {current_hole}번홀 정산")
