@@ -172,34 +172,39 @@ def update_scores(hole_num, par, scores_list):
             st.toast(f"{hole_num}번 홀 저장 완료")
         except Exception as e: st.error(f"저장 실패: {e}")
 
-# --- [핵심 수정] 리셋 기능 (헤더 남기고 데이터만 삭제) ---
+# --- [핵심 수정] 리셋 기능 (입력창 초기화 포함) ---
 def reset_all_data():
     wb = connect_to_sheet()
     if wb:
-        # 1. Settings 리셋 (A2부터 끝까지 삭제)
+        # Settings & Scores 시트 데이터만 삭제 (헤더 유지)
         try:
             ws = wb.worksheet('Settings')
             headers = ['participants_count', 'cart_count'] + [f'player_{i}' for i in range(12)] + [f'cart_{i}' for i in range(12)]
             ensure_headers(ws, headers)
-            ws.batch_clear(['A2:AZ100']) # 2번째 줄부터 청소
+            ws.batch_clear(['A2:AZ100'])
         except: pass
 
-        # 2. Scores 리셋 (A2부터 끝까지 삭제)
         try:
             ws = wb.worksheet('Scores')
             headers_sco = ['hole', 'par'] + [f'p{i}' for i in range(12)]
             ensure_headers(ws, headers_sco)
-            ws.batch_clear(['A2:Z100']) # 2번째 줄부터 청소
+            ws.batch_clear(['A2:Z100'])
         except: pass
         
         st.toast("모든 데이터가 초기화되었습니다 (헤더 유지)")
 
-    # 3. 세션(앱 화면) 초기화
+    # 1. 내부 변수 초기화
     st.session_state.players = []
     st.session_state.game_info = {'current_hole': 1, 'par': 4, 'participants_count': 4, 'cart_count': 1, 'pars': {}}
     st.session_state.history = {}
     st.session_state.step = 1
     st.session_state.show_reset_confirm = False
+
+    # 2. [추가됨] 화면 입력창(이름, 카트번호 등) 강제 초기화
+    # session_state에서 해당 키를 지워버리면, 다음 rerun 때 기본값(빈칸, 1)으로 다시 그려집니다.
+    keys_to_clear = [key for key in st.session_state.keys() if key.startswith(('name_', 'cart_', 'ui_num_', 'score_rel_', 'par_select_'))]
+    for key in keys_to_clear:
+        del st.session_state[key]
 
 # --- 계산 로직 (유지) ---
 def init_session_state():
