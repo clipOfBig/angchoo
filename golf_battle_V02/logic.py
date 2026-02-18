@@ -15,7 +15,6 @@ def connect_to_sheet():
     try:
         # secrets.toml에서 정보 가져오기
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        # 스트림릿 시크릿에서 JSON 정보를 dict로 가져옴
         creds_dict = dict(st.secrets["gcp_service_account"])
         
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
@@ -27,6 +26,36 @@ def connect_to_sheet():
         st.error(f"구글 시트 연결 실패: {e}")
         return None
 
+# --- [수정됨] 시트 초기화 함수 (에러 방지 강화) ---
+def init_sheets(wb):
+    """시트가 없을 때 초기 구조 생성 (권한 에러 확인용)"""
+    
+    # 1. Settings 시트 확인 및 생성
+    try:
+        ws_set = wb.worksheet('Settings')
+    except gspread.exceptions.WorksheetNotFound:
+        try:
+            ws_set = wb.add_worksheet(title="Settings", rows=10, cols=30)
+            # 헤더 초기화
+            headers = ['participants_count', 'cart_count'] + [f'player_{i}' for i in range(12)] + [f'cart_{i}' for i in range(12)]
+            ws_set.append_row(headers)
+        except Exception as e:
+            st.error(f"🚨 'Settings' 시트 생성 실패! 구글 시트 공유 설정이 '편집자(Editor)'인지 확인하세요.\n에러 내용: {e}")
+            return None
+
+    # 2. Scores 시트 확인 및 생성
+    try:
+        ws_sco = wb.worksheet('Scores')
+    except gspread.exceptions.WorksheetNotFound:
+        try:
+            ws_sco = wb.add_worksheet(title="Scores", rows=50, cols=20)
+            # 헤더 초기화
+            headers_sco = ['hole', 'par'] + [f'p{i}' for i in range(12)]
+            ws_sco.append_row(headers_sco)
+        except Exception as e:
+            st.error(f"🚨 'Scores' 시트 생성 실패! 권한을 확인하세요.\n에러 내용: {e}")
+            return None
+
 # --- 데이터 동기화 (Load) ---
 def sync_data():
     """구글 시트에서 최신 데이터를 가져와 세션 상태 업데이트"""
@@ -34,72 +63,58 @@ def sync_data():
     if not wb: return
 
     try:
-        # 1. Settings 시트 읽기
-        ws_settings = wb.worksheet('Settings')
+        # 시트 존재 여부 확인 및 초기화
+        try:
+            ws_settings = wb.worksheet('Settings')
+        except gspread.exceptions.WorksheetNotFound:
+            init_sheets(wb)
+            # 초기화 후 다시 시도
+            try:
+                ws_settings = wb.worksheet('Settings')
+            except:
+                return # 여전히 없으면 중단 (권한 문제 등)
+
         settings_data = ws_settings.get_all_records()
         
         if settings_data:
-            # 첫 번째 행에 설정 정보가 있다고 가정
             row = settings_data[0]
             st.session_state.game_info['participants_count'] = int(row['participants_count'])
             st.session_state.game_info['cart_count'] = int(row['cart_count'])
             
-            # 플레이어 정보 파싱
             players = []
             for i in range(row['participants_count']):
                 p_key = f"player_{i}"
                 c_key = f"cart_{i}"
-                # 시트에 저장된 JSON 형태의 스코어를 복구하거나 별도 시트에서 가져옴
-                # 여기서는 간단하게 Scores 시트에서 다시 읽는 구조로 감
                 players.append({
                     'id': i,
                     'name': row.get(p_key, f"참가자{i+1}"),
                     'cart': int(row.get(c_key, 1)),
-                    'scores': {} # 아래에서 채움
+                    'scores': {}
                 })
             st.session_state.players = players
             
-        # 2. Scores 시트 읽기
-        ws_scores = wb.worksheet('Scores')
-        score_rows = ws_scores.get_all_records()
-        
-        # score_rows 예: [{'hole': 1, 'par': 4, 'p0': 5, 'p1': 4...}, ...]
-        for row in score_rows:
-            h = int(row['hole'])
-            for p_idx in range(len(st.session_state.players)):
-                p_key = f"p{p_idx}"
-                if p_key in row and row[p_key] != "":
-                    st.session_state.players[p_idx]['scores'][h] = int(row[p_key])
-                    
-    except gspread.exceptions.WorksheetNotFound:
-        # 시트가 없으면 생성 (초기화)
-        init_sheets(wb)
+        # Scores 읽기
+        try:
+            ws_scores = wb.worksheet('Scores')
+            score_rows = ws_scores.get_all_records()
+            
+            for row in score_rows:
+                h = int(row['hole'])
+                for p_idx in range(len(st.session_state.players)):
+                    p_key = f"p{p_idx}"
+                    # 빈 문자열이나 키가 없는 경우 제외
+                    if p_key in row and row[p_key] != "":
+                        st.session_state.players[p_idx]['scores'][h] = int(row[p_key])
+        except gspread.exceptions.WorksheetNotFound:
+            pass # Scores 시트가 아직 없으면 패스
+            
     except Exception as e:
-        # 아직 데이터가 없는 경우 등
+        # st.error(f"동기화 중 오류: {e}") # 디버깅용
         pass
-
-def init_sheets(wb):
-    """시트가 없을 때 초기 구조 생성"""
-    try:
-        wb.add_worksheet(title="Settings", rows=10, cols=20)
-    except: pass
-    try:
-        wb.add_worksheet(title="Scores", rows=20, cols=20)
-    except: pass
-    
-    ws_set = wb.worksheet('Settings')
-    # 헤더 생성
-    headers = ['participants_count', 'cart_count'] + [f'player_{i}' for i in range(12)] + [f'cart_{i}' for i in range(12)]
-    ws_set.update([headers])
-
-    ws_sco = wb.worksheet('Scores')
-    headers_sco = ['hole', 'par'] + [f'p{i}' for i in range(12)]
-    ws_sco.update([headers_sco])
-
 
 # --- 데이터 저장 (Save) ---
 def save_setup_data(num_participants, num_carts, names, carts):
-    # 1. 세션 업데이트
+    # 세션 업데이트
     old_players = st.session_state.players
     new_players = []
     st.session_state.game_info['participants_count'] = num_participants
@@ -114,58 +129,85 @@ def save_setup_data(num_participants, num_carts, names, carts):
         })
     st.session_state.players = new_players
 
-    # 2. 구글 시트 저장
+    # 구글 시트 저장
     wb = connect_to_sheet()
     if wb:
+        # 시트가 없으면 생성 시도
+        init_sheets(wb)
         try:
             ws = wb.worksheet('Settings')
-        except:
-            init_sheets(wb)
-            ws = wb.worksheet('Settings')
             
-        # 데이터 구성
-        row_data = [num_participants, num_carts]
-        for n in names: row_data.append(n)
-        # 빈칸 채우기 (최대 12명)
-        for _ in range(12 - len(names)): row_data.append("")
+            row_data = [num_participants, num_carts]
+            for n in names: row_data.append(n)
+            for _ in range(12 - len(names)): row_data.append("")
+            for c in carts: row_data.append(c)
+            for _ in range(12 - len(carts)): row_data.append("")
             
-        for c in carts: row_data.append(c)
-        for _ in range(12 - len(carts)): row_data.append("")
-        
-        # 2번째 줄(데이터) 업데이트
-        ws.update('A2', [row_data])
-        st.toast("설정이 구글 시트에 저장되었습니다!")
+            # 헤더가 없으면 추가, 있으면 2번째 줄 업데이트
+            if not ws.get_all_values():
+                headers = ['participants_count', 'cart_count'] + [f'player_{i}' for i in range(12)] + [f'cart_{i}' for i in range(12)]
+                ws.append_row(headers)
+                ws.append_row(row_data)
+            else:
+                # 2번째 줄 업데이트 (A2부터 시작)
+                # gspread 버전에 따라 update 문법이 다를 수 있음. range 사용이 안전.
+                cell_list = ws.range(f'A2:AZ2') # 넉넉하게 잡음
+                for i, val in enumerate(row_data):
+                    if i < len(cell_list):
+                        cell_list[i].value = val
+                ws.update_cells(cell_list)
+                
+            st.toast("설정 저장 완료!")
+        except Exception as e:
+            st.error(f"저장 실패: {e}")
 
 def update_scores(hole_num, par, scores_list):
-    # 1. 세션 업데이트
+    # 세션 업데이트
     st.session_state.game_info['current_hole'] = hole_num
     st.session_state.game_info['par'] = par
     for i, score in enumerate(scores_list):
         st.session_state.players[i]['scores'][hole_num] = score
 
-    # 2. 구글 시트 저장 (해당 홀 행 업데이트)
+    # 구글 시트 저장
     wb = connect_to_sheet()
     if wb:
+        init_sheets(wb)
         try:
             ws = wb.worksheet('Scores')
-        except:
-            init_sheets(wb)
-            ws = wb.worksheet('Scores')
-        
-        # 해당 홀의 데이터 찾기 또는 추가
-        # cell_list = ws.find(str(hole_num), in_column=1) ... 비효율적일 수 있으므로
-        # 단순히 1번홀=2행, 2번홀=3행 ... 규칙 사용
-        
-        row_idx = hole_num + 1
-        # 데이터: [hole, par, p0_score, p1_score ...]
-        row_data = [hole_num, par] + scores_list
-        
-        # 범위 업데이트 (A열 ~ 끝)
-        ws.update(f"A{row_idx}", [row_data])
-        st.toast(f"{hole_num}번 홀 점수 저장 완료! (동기화됨)")
+            if not ws.get_all_values():
+                headers_sco = ['hole', 'par'] + [f'p{i}' for i in range(12)]
+                ws.append_row(headers_sco)
+            
+            # 해당 홀 데이터 찾기 (홀 번호는 유니크하다고 가정)
+            # 전체 데이터를 가져와서 해당 홀이 있는지 확인
+            all_vals = ws.get_all_values()
+            row_idx = -1
+            
+            # 1번째 줄은 헤더이므로 2번째 줄부터 확인
+            for idx, row in enumerate(all_vals):
+                if idx == 0: continue
+                if row and str(row[0]) == str(hole_num):
+                    row_idx = idx + 1 # 1-based index
+                    break
+            
+            row_data = [hole_num, par] + scores_list
+            
+            if row_idx > 0:
+                # 기존 행 업데이트
+                cell_list = ws.range(f'A{row_idx}:Z{row_idx}')
+                for i, val in enumerate(row_data):
+                    if i < len(cell_list):
+                        cell_list[i].value = val
+                ws.update_cells(cell_list)
+            else:
+                # 새 행 추가
+                ws.append_row(row_data)
+                
+            st.toast(f"{hole_num}번 홀 저장 완료!")
+        except Exception as e:
+            st.error(f"점수 저장 실패: {e}")
 
-
-# --- 기존 계산 로직 (유지) ---
+# --- 기존 로직 (유지) ---
 def init_session_state():
     if 'step' not in st.session_state: st.session_state.step = 1
     if 'players' not in st.session_state: st.session_state.players = []
@@ -173,7 +215,6 @@ def init_session_state():
         st.session_state.game_info = {'current_hole': 1, 'par': 4, 'participants_count': 4, 'cart_count': 1}
     if 'history' not in st.session_state: st.session_state.history = {}
 
-    # 앱 시작 시 자동 동기화 시도
     if 'is_synced' not in st.session_state:
         sync_data()
         st.session_state.is_synced = True
@@ -240,19 +281,22 @@ def calculate_settlement(hole_num):
     return df, is_baepan, baepan_reasons
 
 def get_total_settlement():
-    # 전체 기록 재계산을 위해 history 다시 빌드 (동기화된 데이터 기반)
-    # 현재 history는 세션에만 있으므로, players의 scores를 기반으로 다시 계산하는게 안전함
     total_map = {}
+    if not st.session_state.players: return pd.DataFrame()
+    
     for p in st.session_state.players:
         total_map[p['name']] = 0
         
-    # 1홀부터 현재 홀까지 순회하며 재계산
     max_hole = st.session_state.game_info['current_hole']
     for h in range(1, 19):
-        # 데이터가 있는 홀만 계산
-        if not st.session_state.players[0]['scores'].get(h): continue
+        # 데이터 존재 여부 확인
+        has_data = False
+        for p in st.session_state.players:
+             if h in p['scores']:
+                 has_data = True
+                 break
+        if not has_data: continue
         
-        # 임시 계산
         df, _, _ = calculate_settlement(h)
         for _, row in df.iterrows():
             total_map[row['이름']] += row['합계']
@@ -283,7 +327,5 @@ def calculate_transfer_details():
         if receiver['amount'] == 0: r_idx += 1
     return transfers
 
-# 파일 저장/불러오기 기능은 구글 시트로 대체되었으므로 삭제하거나 유지해도 됨
-# 여기서는 유지하되 더미로 남김
 def export_game_data(): return "{}" 
 def load_game_data(f): return False
