@@ -25,12 +25,15 @@ def connect_to_sheet():
 
 # --- 시트 초기화 ---
 def init_sheets(wb):
+    # Settings 시트 확인
     try: wb.worksheet('Settings')
     except:
         try:
             ws = wb.add_worksheet('Settings', 10, 30)
             ws.append_row(['participants_count', 'cart_count'] + [f'player_{i}' for i in range(12)] + [f'cart_{i}' for i in range(12)])
         except: pass
+    
+    # Scores 시트 확인
     try: wb.worksheet('Scores')
     except:
         try:
@@ -38,7 +41,7 @@ def init_sheets(wb):
             ws.append_row(['hole', 'par'] + [f'p{i}' for i in range(12)])
         except: pass
 
-# --- [핵심 수정] 데이터 동기화 ---
+# --- [핵심 수정] 데이터 동기화 (자동 복구 기능 추가) ---
 def sync_data():
     wb = connect_to_sheet()
     if not wb: return
@@ -47,9 +50,20 @@ def sync_data():
     try:
         ws_settings = wb.worksheet('Settings')
         rows = ws_settings.get_all_values()
+        
+        # [자동 복구] Settings 헤더 체크
+        if rows and str(rows[0][0]).strip() != 'participants_count':
+             header_row = ['participants_count', 'cart_count'] + [f'player_{i}' for i in range(12)] + [f'cart_{i}' for i in range(12)]
+             ws_settings.insert_row(header_row, index=1)
+             rows = ws_settings.get_all_values() # 다시 읽기
+             st.toast("Settings 시트 헤더 자동 복구 완료 🛠️")
+
         if len(rows) > 1:
             header = rows[0]; data = rows[1]
-            settings_map = {k: v for k, v in zip(header, data)}
+            # 안전하게 매핑 (데이터 길이가 짧을 경우 대비)
+            settings_map = {}
+            for i, h in enumerate(header):
+                if i < len(data): settings_map[h] = data[i]
             
             if settings_map.get('participants_count'):
                 st.session_state.game_info['participants_count'] = int(settings_map['participants_count'])
@@ -57,17 +71,26 @@ def sync_data():
                 st.session_state.game_info['cart_count'] = int(settings_map['cart_count'])
             
             players = []
-            for i in range(st.session_state.game_info['participants_count']):
+            p_count = st.session_state.game_info.get('participants_count', 4)
+            for i in range(p_count):
                 p_name = settings_map.get(f"player_{i}", f"참가자{i+1}")
-                c_val = settings_map.get(f"cart_{i}", "1")
+                c_val = str(settings_map.get(f"cart_{i}", "1"))
                 players.append({'id': i, 'name': p_name, 'cart': int(c_val) if c_val.isdigit() else 1, 'scores': {}})
             st.session_state.players = players
-    except: pass
+    except Exception as e: pass
 
     # 2. Scores 로드
     try:
         ws_scores = wb.worksheet('Scores')
         rows = ws_scores.get_all_values()
+        
+        # [자동 복구] Scores 헤더 체크 (첫 칸이 'hole'이 아니면 복구)
+        if rows and len(rows) > 0 and str(rows[0][0]).lower().strip() != 'hole':
+             header_row = ['hole', 'par'] + [f'p{i}' for i in range(12)]
+             ws_scores.insert_row(header_row, index=1)
+             rows = ws_scores.get_all_values() # 다시 읽기
+             st.toast("Scores 시트 헤더 자동 복구 완료 🛠️")
+
         if len(rows) > 1:
             header = rows[0]
             p_indices = {}; hole_idx = -1; par_idx = -1
@@ -77,8 +100,9 @@ def sync_data():
                 if col.startswith('p') and col[1:].isdigit(): p_indices[int(col[1:])] = idx
             
             if hole_idx != -1:
+                # 데이터 읽기
                 for row in rows[1:]:
-                    if not row[hole_idx]: continue
+                    if len(row) <= hole_idx or not row[hole_idx]: continue
                     try: h = int(row[hole_idx])
                     except: continue
                     
@@ -93,30 +117,15 @@ def sync_data():
                                 try: st.session_state.players[p_idx]['scores'][h] = int(val)
                                 except: pass
         
-        # --- [중요] 화면 강제 업데이트 로직 ---
-        # 1. 현재 보고 있는 홀의 입력창 값 강제 변경
-        current_h = st.session_state.game_info['current_hole']
-        current_par = st.session_state.game_info['pars'].get(current_h, 4)
-        
-        # Par 선택창 강제 동기화 (값이 없으면 0)
-        par_options = [3, 4, 5, 6]
-        try: par_idx = par_options.index(current_par)
-        except: par_idx = 1 # Default 4
-        # 주의: selectbox는 index가 아니라 value로 관리되거나 key 초기화 필요
-        # 여기서는 key를 삭제하여 views.py가 다시 그리게 유도
-        
-        # 2. 모든 위젯 키 삭제 (가장 확실한 방법)
-        # 이렇게 하면 views.py가 실행될 때 session_state에 값이 없으므로
-        # players['scores'] 데이터를 기반으로 위젯을 다시 초기화합니다.
+        # [화면 강제 갱신] 캐시 삭제
         keys_to_drop = []
         for key in st.session_state.keys():
             if key.startswith("score_rel_") or key.startswith("par_select_"):
                 keys_to_drop.append(key)
-        
         for key in keys_to_drop:
             del st.session_state[key]
             
-    except Exception as e: st.error(f"동기화 오류: {e}")
+    except Exception as e: st.error(f"점수 동기화 중 오류: {e}")
 
 # --- 저장 ---
 def save_setup_data(num_participants, num_carts, names, carts):
@@ -132,16 +141,19 @@ def save_setup_data(num_participants, num_carts, names, carts):
     if wb:
         try: ws = wb.worksheet('Settings')
         except: init_sheets(wb); ws = wb.worksheet('Settings')
+        
+        # 헤더 체크 및 삽입
+        rows = ws.get_all_values()
+        if not rows or (rows and str(rows[0][0]).strip() != 'participants_count'):
+            ws.insert_row(['participants_count', 'cart_count'] + [f'player_{i}' for i in range(12)] + [f'cart_{i}' for i in range(12)], index=1)
+            
         data = [num_participants, num_carts] + names + [""]*(12-len(names)) + carts + [""]*(12-len(carts))
         try:
-            if not ws.get_all_values():
-                ws.append_row(['participants_count', 'cart_count'] + [f'player_{i}' for i in range(12)] + [f'cart_{i}' for i in range(12)])
-                ws.append_row(data)
-            else:
-                cell_list = ws.range('A2:AZ2')
-                for i, v in enumerate(data): 
-                    if i < len(cell_list): cell_list[i].value = v
-                ws.update_cells(cell_list)
+            # 2번째 줄(A2) 업데이트
+            cell_list = ws.range('A2:AZ2')
+            for i, v in enumerate(data): 
+                if i < len(cell_list): cell_list[i].value = v
+            ws.update_cells(cell_list)
             st.toast("설정 저장 완료")
         except: pass
 
@@ -155,13 +167,18 @@ def update_scores(hole_num, par, scores_list):
     if wb:
         try: ws = wb.worksheet('Scores')
         except: init_sheets(wb); ws = wb.worksheet('Scores')
+        
         try:
-            all = ws.get_all_values()
-            if not all: ws.append_row(['hole', 'par'] + [f'p{i}' for i in range(12)]); all = [['hole']]
-            
+            all_vals = ws.get_all_values()
+            # 헤더가 없으면 삽입
+            if not all_vals or (all_vals and str(all_vals[0][0]).lower().strip() != 'hole'):
+                ws.insert_row(['hole', 'par'] + [f'p{i}' for i in range(12)], index=1)
+                all_vals = ws.get_all_values() # 다시 읽기
+
             row_idx = -1
-            for i, r in enumerate(all):
-                if i>0 and len(r)>0 and str(r[0])==str(hole_num): row_idx=i+1; break
+            for i, r in enumerate(all_vals):
+                if i==0: continue # 헤더 건너뛰기
+                if len(r)>0 and str(r[0])==str(hole_num): row_idx=i+1; break
             
             data = [hole_num, par] + scores_list
             if row_idx > 0:
@@ -171,7 +188,7 @@ def update_scores(hole_num, par, scores_list):
                 ws.update_cells(cells)
             else: ws.append_row(data)
             st.toast(f"{hole_num}번 홀 저장 완료")
-        except: pass
+        except Exception as e: st.error(f"저장 실패: {e}")
 
 # --- 리셋 ---
 def reset_all_data():
@@ -188,7 +205,7 @@ def reset_all_data():
     st.session_state.step = 1
     st.session_state.show_reset_confirm = False
 
-# --- 계산/초기화 ---
+# --- 계산/초기화 (유지) ---
 def init_session_state():
     if 'step' not in st.session_state: st.session_state.step = 1
     if 'players' not in st.session_state: st.session_state.players = []
