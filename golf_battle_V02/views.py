@@ -15,22 +15,42 @@ def apply_mobile_style():
         </style>
     """, unsafe_allow_html=True)
 
-def sidebar_sync_button():
-    with st.sidebar:
-        st.header("데이터 동기화")
-        if st.button("🔄 최신 점수 불러오기", type="primary"):
-            logic.sync_data()
-            st.toast("구글 시트에서 최신 정보를 가져왔습니다.")
-            st.rerun()
-        st.caption("다른 카트에서 입력한 점수가 안 보이면 눌러주세요.")
+# [수정됨] 사이드바가 아니라 메인 화면에 버튼을 그리는 함수
+def show_sync_button():
+    # 빨간색 버튼으로 눈에 띄게 배치
+    if st.button("🔄 최신 점수 불러오기 (동기화)", type="primary", use_container_width=True):
+        logic.sync_data()
+        st.toast("구글 시트 동기화 완료!", icon="✅")
+        st.rerun()
 
 def show_setup_screen():
     """화면 1: 설정"""
     apply_mobile_style()
-    sidebar_sync_button()
     
     st.title("⛳️ 골프 내기 정산")
     
+    # [수정] 버튼을 제목 바로 아래에 배치
+    show_sync_button()
+    
+    def auto_distribute_carts():
+        p = st.session_state.ui_num_p
+        c = st.session_state.ui_num_c
+        
+        st.session_state.game_info['participants_count'] = p
+        st.session_state.game_info['cart_count'] = c
+        
+        for i in range(p):
+            auto_cart_num = int((i * c) / p) + 1
+            st.session_state[f"cart_{i}"] = auto_cart_num
+            if i < len(st.session_state.players):
+                st.session_state.players[i]['cart'] = auto_cart_num
+
+    # 저장 기능은 자주 안 쓰니 사이드바에 유지
+    with st.sidebar:
+        st.header("파일 관리")
+        if hasattr(logic, 'export_game_data'):
+            st.download_button("💾 상태 저장", logic.export_game_data(), "golf.json", "application/json")
+
     # 설정값 로드
     saved_p = st.session_state.game_info.get('participants_count', 4)
     saved_c = st.session_state.game_info.get('cart_count', 1)
@@ -56,8 +76,6 @@ def show_setup_screen():
             default_name = st.session_state.players[i]['name'] if i < len(st.session_state.players) else ""
             name = st.text_input(f"이름{i+1}", value=default_name, key=f"name_{i}", label_visibility="collapsed")
         with c2:
-            default_cart = st.session_state.players[i]['cart'] if i < len(st.session_state.players) else 1
-            # 자동 배분 로직 간소화: 새로 설정할 때만 적용되도록
             if f"cart_{i}" not in st.session_state: 
                 auto_val = int((i * num_c) / num_p) + 1
                 st.session_state[f"cart_{i}"] = auto_val
@@ -77,9 +95,11 @@ def show_setup_screen():
 def show_score_screen():
     """화면 2: 점수 입력"""
     apply_mobile_style()
-    sidebar_sync_button()
 
     st.title("📝 점수 입력")
+    
+    # [수정] 버튼을 제목 바로 아래에 배치
+    show_sync_button()
     
     hole_options = list(range(1, 19))
     current_idx = st.session_state.game_info['current_hole'] - 1
@@ -141,11 +161,13 @@ def show_score_screen():
 def show_result_screen():
     """화면 3: 정산 결과"""
     apply_mobile_style()
-    sidebar_sync_button()
     
     current_hole = st.session_state.game_info['current_hole']
     
     st.title(f"⛳️ {current_hole}번홀 정산")
+    
+    # [수정] 버튼을 제목 바로 아래에 배치
+    show_sync_button()
     
     df_hole, is_baepan, reasons = logic.calculate_settlement(current_hole)
     
@@ -183,3 +205,7 @@ def show_result_screen():
     if st.button("◀ 뒤로 (점수 수정/홀 이동)", use_container_width=True):
         st.session_state.step = 2
         st.rerun()
+
+    if current_hole == 18:
+        st.balloons()
+        st.success("🎉 경기 종료! 수고하셨습니다.")
